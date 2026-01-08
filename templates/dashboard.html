@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #b1bdf3 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .side-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+        
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        #botStatus {
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: background-color 0.3s;
+            margin: 0;
+            display: block;
+        }
+        
+        #botStatus.status-running {
+            background: #155724 !important;
+            box-shadow: 0 0 4px rgba(21, 87, 36, 0.5);
+        }
+        
+        #botStatus.status-stopped {
+            background: #dc3545 !important;
+            box-shadow: 0 0 4px rgba(220, 53, 69, 0.5);
+        }
+        
+        #botStatus.status-checking {
+            background: #6c757d !important;
+        }
+        
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .status-card h3 {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .status-card .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.2;
+        }
+        
+        .status-card .value.positive {
+            color: #28a745;
+        }
+        
+        .status-card .value.negative {
+            color: #dc3545;
+        }
+        
+        .section {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 18px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+            position: sticky;
+            top: 0;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .badge.win {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge.loss {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge.active {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .refresh-btn:hover {
+            background: #5568d3;
+        }
+        
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .auto-refresh input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .warnings-panel {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .warnings-panel h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #856404;
+            font-weight: bold;
+        }
+        
+        .warnings-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .warning-item {
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: white;
+            border-left: 3px solid #ffc107;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+            list-style: none;
+        }
+        
+        .warning-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .warning-item.empty-state {
+            border-left: none;
+            background: transparent;
+            padding: 6px 0;
+            text-align: left;
+            margin-left: 0;
+        }
+        
+        .warning-ticker {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .warning-price {
+            color: #666;
+            margin: 0 4px;
+        }
+        
+        .warning-reason {
+            color: #856404;
+        }
+        
+        .warning-time {
+            color: #999;
+            font-size: 11px;
+            margin-top: 2px;
+        }
+        
+        .status-running {
+            background: #d4edda !important;
+            color: #155724 !important;
+        }
+        
+        .status-stopped {
+            background: #f8d7da !important;
+            color: #721c24 !important;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .monitoring-item {
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            background: #f8f9fa;
+        }
+        
+        .monitoring-item.active-position {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .monitoring-item.entry-signal {
+            border-left-color: #17a2b8;
+            background: #d1ecf1;
+        }
+        
+        .monitoring-item.rejected {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+        
+        .monitoring-item h4 {
+            margin: 0 0 4px 0;
+            color: #333;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .monitoring-item .price {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 13px;
+        }
+        
+        .monitoring-item .reasons {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .monitoring-item .reasons ul {
+            margin: 2px 0 0 20px;
+            padding: 0;
+        }
+        
+        .monitoring-item .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .status-badge.monitoring {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .status-badge.active-position {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-badge.entry-signal {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .status-badge.rejected {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-badge.no-signal {
+            background: #6c757d;
+            color: white;
+        }
+        
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .side-panel {
+                width: 100%;
+                order: -1; /* Move monitoring list to top on mobile */
+            }
+            
+            .header {
+                padding: 10px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .header-controls {
+                width: 100%;
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .header-controls > * {
+                width: 100%;
+            }
+            
+            .title-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            
+            .title-row h1 {
+                font-size: 20px;
+            }
+            
+            .refresh-btn {
+                width: 100%;
+                padding: 12px;
+                font-size: 16px;
+            }
+            
+            .section {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .section h2 {
+                font-size: 18px;
+            }
+            
+            .status-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .status-card {
+                padding: 10px;
+            }
+            
+            .status-card .value {
+                font-size: 16px;
+            }
+            
+            .status-card h3 {
+                font-size: 9px;
+            }
+            
+            /* Make tables horizontally scrollable on mobile */
+            .section > div {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table {
+                min-width: 600px;
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+                font-size: 13px;
+            }
+            
+            /* Compact monitoring items on mobile */
+            .monitoring-item {
+                padding: 8px;
+                margin-bottom: 8px;
+            }
+            
+            .monitoring-item h4 {
+                font-size: 13px;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .monitoring-item .price {
+                font-size: 12px;
+            }
+            
+            .status-badge {
+                font-size: 10px;
+                padding: 2px 6px;
+            }
+            
+            /* Adjust input fields in tables */
+            input[type="number"] {
+                width: 80px;
+                font-size: 13px;
+                padding: 4px;
+            }
+            
+            button {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+            
+            .header {
+                padding: 10px;
+            }
+            
+            .title-row h1 {
+                font-size: 18px;
+            }
+            
+            .section {
+                padding: 10px;
+            }
+            
+            .section h2 {
+                font-size: 16px;
+            }
+            
+            table {
+                min-width: 500px;
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 6px 4px;
+                font-size: 11px;
+            }
+            
+            .status-card .value {
+                font-size: 18px;
+            }
+            
+            .refresh-btn {
+                padding: 10px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; flex-wrap: wrap; gap: 10px;">
+                <h2 style="margin: 0;">Portfolio Status</h2>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px; margin-bottom: 0;">
+                    <div class="header-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 0;">
+                        <button class="refresh-btn" onclick="loadData()" style="padding: 6px 12px; font-size: 13px; margin: 0;">Refresh</button>
+                        <button id="startBtn" class="refresh-btn" style="background: #28a745; padding: 6px 12px; font-size: 13px; margin: 0;" onclick="startTrading()">Start</button>
+                        <button id="stopBtn" class="refresh-btn" style="background: #dc3545; padding: 6px 12px; font-size: 13px; margin: 0;" onclick="stopTrading()">Stop</button>
+                        <div id="botStatus" class="status-checking" title="Status: Checking..." style="margin: 0;"></div>
+                    </div>
+                    <div class="auto-refresh" style="display: flex; align-items: center; margin: 0;">
+                        <input type="checkbox" id="autoRefresh" checked style="margin: 0;">
+                        <label for="autoRefresh" style="font-size: 13px; margin: 0 0 0 5px;">Auto-refresh (5s)</label>
+                    </div>
+                </div>
+            </div>
+            <div id="status" class="loading">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Rejected Entry Signals</h2>
+            <div class="warnings-panel">
+                <h3>⚠️ Entry signals detected but trades rejected</h3>
+                <ul id="rejectedEntries" class="warnings-list">
+                    <li class="warning-item empty-state" style="color: #666; font-style: italic; list-style: none;">No rejected entries</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Active Positions</h2>
+            <div id="positions" class="loading">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Completed Trades</h2>
+            <div id="trades" class="loading">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Trading Statistics</h2>
+            <div id="statistics" class="loading">Loading...</div>
+        </div>
+        </div>
+        
+        <div class="side-panel">
+            <div class="section">
+                <h2>Monitoring List</h2>
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #667eea; margin-bottom: 10px;">Top Gainers</h3>
+                    <div id="monitoring-gainers" class="loading">Loading...</div>
+                </div>
+                <div>
+                    <h3 style="color: #667eea; margin-bottom: 10px;">Other Sources</h3>
+                    <div id="monitoring-other" class="loading">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let autoRefreshInterval = null;
+        
+        function formatCurrency(value) {
+            if (value < 1) {
+                // For stocks less than $1, use 3 decimal places
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                }).format(value);
+            } else {
+                // For stocks $1 or more, use 2 decimal places
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }).format(value);
+            }
+        }
+        
+        function formatPercent(value) {
+            return value.toFixed(2) + '%';
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString();
+        }
+        
+        async function loadStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('status').innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+                
+                const html = `
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <h3>Portfolio Value</h3>
+                            <div class="value">${formatCurrency(data.portfolio_value)}</div>
+                        </div>
+                        <div class="status-card">
+                            <h3>Total Return</h3>
+                            <div class="value ${data.total_return_pct >= 0 ? 'positive' : 'negative'}">
+                                ${formatPercent(data.total_return_pct)}
+                            </div>
+                        </div>
+                        <div class="status-card">
+                            <h3>Daily Profit</h3>
+                            <div class="value ${data.daily_profit >= 0 ? 'positive' : 'negative'}">
+                                ${formatCurrency(data.daily_profit)}
+                            </div>
+                        </div>
+                        <div class="status-card">
+                            <h3>Positions</h3>
+                            <div class="value">${data.active_positions_count}/${data.max_positions}</div>
+                        </div>
+                        <div class="status-card">
+                            <h3>Trades</h3>
+                            <div class="value">${data.total_trades}</div>
+                        </div>
+                        <div class="status-card">
+                            <h3>Monitored</h3>
+                            <div class="value">${data.tickers_monitored}</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('status').innerHTML = html;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `<div class="error">Error loading status: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadPositions() {
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('positions').innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    document.getElementById('positions').innerHTML = '<p>No active positions</p>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr>';
+                html += '<th>Ticker</th><th>Entry Price</th><th>Current Price</th><th>Shares</th>';
+                html += '<th>Entry Value</th><th>Current Value</th><th>P&L</th><th>P&L %</th>';
+                html += '<th>Target</th><th>Stop Loss</th><th>Entry Time</th><th>Actions</th></tr></thead><tbody>';
+                
+                data.forEach(pos => {
+                    // Skip positions with null/empty/undefined tickers
+                    if (!pos.ticker || !pos.ticker.trim || !pos.ticker.trim()) {
+                        console.warn('Skipping position with invalid ticker:', pos);
+                        return;
+                    }
+                    
+                    if (pos.error) {
+                        html += `<tr><td colspan="12" class="error">${pos.ticker}: ${pos.error}</td></tr>`;
+                        return;
+                    }
+                    
+                    const pnlClass = pos.unrealized_pnl >= 0 ? 'positive' : 'negative';
+                    const targetPrice = pos.target_price || '';
+                    const stopLoss = pos.stop_loss || '';
+                    
+                    html += `<tr id="position-row-${pos.ticker}">`;
+                    html += `<td><span class="badge active">${pos.ticker}</span></td>`;
+                    html += `<td>${formatCurrency(pos.entry_price)}</td>`;
+                    html += `<td>${formatCurrency(pos.current_price)}</td>`;
+                    html += `<td>${Math.round(pos.shares)}</td>`;
+                    html += `<td>${formatCurrency(pos.entry_value)}</td>`;
+                    html += `<td>${formatCurrency(pos.current_value)}</td>`;
+                    html += `<td class="${pnlClass}">${formatCurrency(pos.unrealized_pnl)}</td>`;
+                    html += `<td class="${pnlClass}">${formatPercent(pos.unrealized_pnl_pct)}</td>`;
+                    html += `<td><input type="number" step="0.01" id="target-${pos.ticker}" value="${targetPrice}" style="width: 100px; padding: 4px;"></td>`;
+                    html += `<td><input type="number" step="0.01" id="stop-${pos.ticker}" value="${stopLoss}" style="width: 100px; padding: 4px;"></td>`;
+                    html += `<td>${formatDate(pos.entry_time)}</td>`;
+                    html += `<td style="white-space: nowrap;">`;
+                    html += `<button class="refresh-btn" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;" onclick="updatePosition('${pos.ticker}')">Update</button>`;
+                    html += `<button class="refresh-btn" style="padding: 5px 10px; font-size: 12px; background: #dc3545;" onclick="closePosition('${pos.ticker}')">Close</button>`;
+                    html += `</td>`;
+                    html += `</tr>`;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('positions').innerHTML = html;
+            } catch (error) {
+                document.getElementById('positions').innerHTML = `<div class="error">Error loading positions: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                const response = await fetch('/api/trades');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('trades').innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    document.getElementById('trades').innerHTML = '<p>No completed trades yet</p>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr>';
+                html += '<th>Ticker</th><th>Entry Time</th><th>Exit Time</th><th>Entry Price</th><th>Exit Price</th>';
+                html += '<th>Shares</th><th>P&L</th><th>P&L %</th><th>Pattern</th><th>Exit Reason</th><th>Status</th></tr></thead><tbody>';
+                
+                data.forEach(trade => {
+                    // Skip trades with null/empty/undefined tickers
+                    if (!trade.ticker || !trade.ticker.trim || !trade.ticker.trim()) {
+                        console.warn('Skipping trade with invalid ticker:', trade);
+                        return;
+                    }
+                    
+                    const statusClass = trade.status === 'WIN' ? 'win' : 'loss';
+                    html += `<tr>`;
+                    html += `<td>${trade.ticker}</td>`;
+                    html += `<td>${formatDate(trade.entry_time)}</td>`;
+                    html += `<td>${formatDate(trade.exit_time)}</td>`;
+                    html += `<td>${formatCurrency(trade.entry_price)}</td>`;
+                    html += `<td>${formatCurrency(trade.exit_price)}</td>`;
+                    html += `<td>${Math.round(trade.shares)}</td>`;
+                    html += `<td class="${statusClass}">${formatCurrency(trade.pnl_dollars)}</td>`;
+                    html += `<td class="${statusClass}">${formatPercent(trade.pnl_pct)}</td>`;
+                    html += `<td>${trade.entry_pattern || 'N/A'}</td>`;
+                    html += `<td>${trade.exit_reason || 'N/A'}</td>`;
+                    html += `<td><span class="badge ${statusClass}">${trade.status}</span></td>`;
+                    html += `</tr>`;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('trades').innerHTML = html;
+            } catch (error) {
+                document.getElementById('trades').innerHTML = `<div class="error">Error loading trades: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadStatistics() {
+            try {
+                const response = await fetch('/api/statistics');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('statistics').innerHTML = `<div class="error">${data.error}</div>`;
+                    return;
+                }
+                
+                let html = '<div class="status-grid">';
+                html += `<div class="status-card"><h3>Total Trades</h3><div class="value">${data.total_trades}</div></div>`;
+                html += `<div class="status-card"><h3>Winning Trades</h3><div class="value positive">${data.winning_trades}</div></div>`;
+                html += `<div class="status-card"><h3>Losing Trades</h3><div class="value negative">${data.losing_trades}</div></div>`;
+                html += `<div class="status-card"><h3>Win Rate</h3><div class="value">${formatPercent(data.win_rate)}</div></div>`;
+                html += `<div class="status-card"><h3>Total P&L</h3><div class="value ${data.total_pnl >= 0 ? 'positive' : 'negative'}">${formatCurrency(data.total_pnl)}</div></div>`;
+                html += `<div class="status-card"><h3>Average P&L</h3><div class="value ${data.avg_pnl >= 0 ? 'positive' : 'negative'}">${formatCurrency(data.avg_pnl)}</div></div>`;
+                
+                if (data.best_trade) {
+                    html += `<div class="status-card"><h3>Best Trade</h3><div class="value positive">${data.best_trade.ticker}<br>${formatPercent(data.best_trade.pnl_pct)}<br>${formatCurrency(data.best_trade.pnl_dollars)}</div></div>`;
+                }
+                
+                if (data.worst_trade) {
+                    html += `<div class="status-card"><h3>Worst Trade</h3><div class="value negative">${data.worst_trade.ticker}<br>${formatPercent(data.worst_trade.pnl_pct)}<br>${formatCurrency(data.worst_trade.pnl_dollars)}</div></div>`;
+                }
+                
+                html += '</div>';
+                document.getElementById('statistics').innerHTML = html;
+            } catch (error) {
+                document.getElementById('statistics').innerHTML = `<div class="error">Error loading statistics: ${error.message}</div>`;
+            }
+        }
+        
+        function renderMonitoringList(items, containerId, showChangePct = false) {
+            if (items.length === 0) {
+                document.getElementById(containerId).innerHTML = '<p style="color: #666; font-style: italic;">No tickers in this category</p>';
+                return;
+            }
+            
+            let html = '';
+            items.forEach(item => {
+                // Skip items with null/empty/undefined tickers
+                if (!item.ticker || !item.ticker.trim || !item.ticker.trim()) {
+                    console.warn('Skipping monitoring item with invalid ticker:', item);
+                    return;
+                }
+                
+                const statusClass = item.status === 'active_position' ? 'active-position' :
+                                  item.status === 'entry_signal' ? 'entry-signal' :
+                                  item.status === 'rejected' ? 'rejected' : '';
+                
+                const statusBadgeClass = item.status === 'active_position' ? 'active-position' :
+                                       item.status === 'entry_signal' ? 'entry-signal' :
+                                       item.status === 'rejected' ? 'rejected' :
+                                       item.status === 'no_signal' ? 'no-signal' : 'monitoring';
+                
+                const statusText = item.status === 'active_position' ? 'ACTIVE' :
+                                  item.status === 'entry_signal' ? 'ENTRY SIGNAL' :
+                                  item.status === 'rejected' ? 'REJECTED' :
+                                  item.status === 'no_signal' ? 'NO SIGNAL' : 'MONITORING';
+                
+                html += `<div class="monitoring-item ${statusClass}">`;
+                const priceHtml = item.current_price ? `<span class="price">${formatCurrency(item.current_price)}</span>` : '';
+                
+                // Add change % for top gainers
+                let changeHtml = '';
+                if (showChangePct && item.change_pct !== null && item.change_pct !== undefined) {
+                    const changeColor = item.change_pct >= 0 ? '#28a745' : '#dc3545';
+                    const changeSign = item.change_pct >= 0 ? '+' : '';
+                    changeHtml = `<span style="color: ${changeColor}; font-weight: bold; margin-left: 8px;">${changeSign}${item.change_pct.toFixed(2)}%</span>`;
+                }
+                
+                html += `<h4>${item.ticker} ${priceHtml}${changeHtml} <span class="status-badge ${statusBadgeClass}">${statusText}</span></h4>`;
+                
+                if (item.rejection_reasons && item.rejection_reasons.length > 0) {
+                    html += `<div class="reasons"><ul>`;
+                    item.rejection_reasons.forEach(reason => {
+                        html += `<li>${reason}</li>`;
+                    });
+                    html += `</ul></div>`;
+                } else if (item.status === 'entry_signal') {
+                    html += `<div class="reasons" style="color: #17a2b8;">Entry signal detected - ready to trade</div>`;
+                } else if (item.status === 'active_position') {
+                    html += `<div class="reasons" style="color: #28a745;">Active position</div>`;
+                }
+                
+                html += `</div>`;
+            });
+            
+            document.getElementById(containerId).innerHTML = html;
+        }
+        
+        async function loadMonitoring() {
+            try {
+                const response = await fetch('/api/monitoring');
+                const data = await response.json();
+                
+                if (data.error) {
+                    document.getElementById('monitoring-gainers').innerHTML = `<div class="error">${data.error}</div>`;
+                    document.getElementById('monitoring-other').innerHTML = '';
+                    return;
+                }
+                
+                // Render top gainers and other tickers separately
+                // Top gainers are already sorted by change % (descending) from the API
+                renderMonitoringList(data.top_gainers || [], 'monitoring-gainers', true);  // Show change % for gainers
+                renderMonitoringList(data.other_tickers || [], 'monitoring-other', false);
+                
+                // Show last refresh time if available
+                if (data.last_refresh) {
+                    const refreshTime = new Date(data.last_refresh);
+                    const refreshInfo = document.createElement('div');
+                    refreshInfo.style.cssText = 'font-size: 11px; color: #666; margin-top: 10px; font-style: italic;';
+                    refreshInfo.textContent = `Last refreshed: ${refreshTime.toLocaleTimeString()}`;
+                    document.getElementById('monitoring-other').appendChild(refreshInfo);
+                }
+            } catch (error) {
+                document.getElementById('monitoring-gainers').innerHTML = `<div class="error">Error loading monitoring: ${error.message}</div>`;
+                document.getElementById('monitoring-other').innerHTML = '';
+            }
+        }
+        
+        function loadData() {
+            loadStatus();
+            loadPositions();
+            loadTrades();
+            loadStatistics();
+            loadMonitoring();
+            loadRejectedEntries();
+        }
+        
+        async function loadRejectedEntries() {
+            try {
+                const response = await fetch('/api/rejected-entries');
+                const data = await response.json();
+                
+                const container = document.getElementById('rejectedEntries');
+                if (!container) return;
+                
+                if (!data.rejected_entries || data.rejected_entries.length === 0) {
+                    container.innerHTML = '<li class="warning-item empty-state" style="color: #666; font-style: italic; list-style: none;">No rejected entries</li>';
+                    return;
+                }
+                
+                let html = '';
+                data.rejected_entries.forEach(entry => {
+                    const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : '';
+                    html += `
+                        <li class="warning-item">
+                            <span class="warning-ticker">${entry.ticker}</span>
+                            <span class="warning-price">@ $${entry.price.toFixed(4)}</span>
+                            <span class="warning-reason">- ${entry.reason}</span>
+                            ${time ? `<div class="warning-time">${time}</div>` : ''}
+                        </li>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading rejected entries:', error);
+                const container = document.getElementById('rejectedEntries');
+                if (container) {
+                    container.innerHTML = '<li class="warning-item" style="color: #dc3545;">Error loading rejected entries</li>';
+                }
+            }
+        }
+        
+        // Auto-refresh functionality
+        document.getElementById('autoRefresh').addEventListener('change', function(e) {
+            if (e.target.checked) {
+                autoRefreshInterval = setInterval(loadData, 5000);
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+            }
+        });
+        
+        async function startTrading() {
+            try {
+                const response = await fetch('/api/start', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error starting bot: ' + data.error);
+                    return;
+                }
+                
+                console.log(data.message);
+                updateBotStatus(true);
+                loadData();
+            } catch (error) {
+                console.error('Error starting bot: ' + error.message);
+            }
+        }
+        
+        async function stopTrading() {
+            
+            try {
+                const response = await fetch('/api/stop', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error stopping bot: ' + data.error);
+                    return;
+                }
+                
+                console.log(data.message);
+                updateBotStatus(false);
+                loadData();
+            } catch (error) {
+                console.error('Error stopping bot: ' + error.message);
+            }
+        }
+        
+        function updateBotStatus(running) {
+            const statusDiv = document.getElementById('botStatus');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            
+            if (running) {
+                statusDiv.className = 'status-running';
+                statusDiv.title = 'Status: Running';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            } else {
+                statusDiv.className = 'status-stopped';
+                statusDiv.title = 'Status: Stopped';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+        
+        // Update bot status from status data
+        async function updateBotStatusFromData() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (!data.error && data.running !== undefined) {
+                    updateBotStatus(data.running);
+                }
+            } catch (error) {
+                console.error('Error updating bot status:', error);
+            }
+        }
+        
+        async function updatePosition(ticker) {
+            const targetInput = document.getElementById(`target-${ticker}`);
+            const stopInput = document.getElementById(`stop-${ticker}`);
+            
+            const targetPrice = parseFloat(targetInput.value);
+            const stopLoss = parseFloat(stopInput.value);
+            
+            if (isNaN(targetPrice) || targetPrice <= 0) {
+                console.error('Please enter a valid target price');
+                return;
+            }
+            
+            if (isNaN(stopLoss) || stopLoss <= 0) {
+                console.error('Please enter a valid stop loss price');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/positions/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ticker: ticker,
+                        target_price: targetPrice,
+                        stop_loss: stopLoss
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error updating position: ' + data.error);
+                    return;
+                }
+                
+                console.log(data.message || 'Position updated successfully');
+                loadPositions(); // Reload positions to reflect changes
+            } catch (error) {
+                console.error('Error updating position: ' + error.message);
+            }
+        }
+        
+        async function closePosition(ticker) {
+            
+            try {
+                const response = await fetch('/api/positions/close', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ticker: ticker
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    console.error('Error closing position: ' + data.error);
+                    return;
+                }
+                
+                console.log(data.message || 'Position closed successfully');
+                loadData(); // Reload all data to reflect the closed position
+            } catch (error) {
+                console.error('Error closing position: ' + error.message);
+            }
+        }
+        
+        // Initial load
+        loadData();
+        updateBotStatusFromData();
+        
+        // Start auto-refresh if enabled
+        if (document.getElementById('autoRefresh').checked) {
+            autoRefreshInterval = setInterval(() => {
+                loadData();
+                updateBotStatusFromData();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+
