@@ -1,0 +1,2 @@
+ticker,entry_time,exit_time,entry_price,exit_price,shares,entry_value,exit_value,pnl_dollars,pnl_pct,entry_pattern,exit_reason,confidence,hold_time_minutes,max_price,max_price_pct,capture_rate
+EVTV,2026-01-12 15:29:00-05:00,2026-01-12 16:10:00-05:00,2.12,2.11,1000,2120.0,2110.0,-10.0,-0.4716981132075472,Golden_Cross,Stop loss hit at $2.1200,70.0,41.0,2.61,23.1132075471698,-2.040816326530613

@@ -1,0 +1,191 @@
+time,price,volume,volume_ratio,momentum_5,momentum_10,in_entry_window,in_exit_window,entry_signal,pattern,confidence,rejection_reasons_str
+2026-01-12 04:04:00-05:00,0.701,292,0,1.5942028985507264,1.7416545718432528,False,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 04:18:00-05:00,0.7012,200,0,1.6231884057971158,1.6231884057971158,False,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 05:34:00-05:00,0.7025,180,0,1.8115942028985605,1.8115942028985605,False,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 05:46:00-05:00,0.7036,496,0,1.9710144927536315,5.014925373134322,False,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 06:44:00-05:00,0.7041,79,0,0.44222539229671787,5.089552238805957,False,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 06:59:00-05:00,0.71,4,0,1.254991443240148,2.898550724637684,False,False,False,,0.0,"Low volume stock (total 193,614 < 200,000 over 60 min, threshold for hour 6)"
+2026-01-12 07:01:00-05:00,0.7052,1406,0,0.38434163701068125,2.202898550724653,False,False,False,,0.0,"Low volume stock (total 187,703 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 07:02:00-05:00,0.71,25,0,0.9096077316657137,2.898550724637684,False,False,False,,0.0,"Low volume stock (total 186,452 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 07:36:00-05:00,0.74,251,0,5.098707569947456,7.24637681159421,True,False,False,,0.0,"Low volume stock (total 186,388 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 07:37:00-05:00,0.7499,1300,0,5.619718309859162,6.975748930099866,True,False,False,,0.0,"Low volume stock (total 184,383 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 07:38:00-05:00,0.7405,169,0,5.005672149744752,5.604677695379349,True,False,False,,0.0,"Low volume stock (total 169,051 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 07:40:00-05:00,0.7405,2,0,4.2957746478873355,5.409252669039151,True,False,False,,0.0,"Low volume stock (total 168,141 < 200,000 over 60 min, threshold for hour 7)"
+2026-01-12 08:01:00-05:00,0.75,51136,0,1.3513513513513526,6.594656054576463,True,False,False,,0.0,"Low volume stock (total 218,766 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:02:00-05:00,0.75,200,0,0.01333511134817829,6.518960374946749,True,False,False,,0.0,"Low volume stock (total 217,650 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:03:00-05:00,0.75,13975,0,1.2829169480080962,5.633802816901413,True,False,False,,0.0,"Low volume stock (total 229,441 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:04:00-05:00,0.75,2855,0,1.2829169480080962,6.352807714123646,True,False,False,,0.0,"Low volume stock (total 232,045 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:05:00-05:00,0.75,25070,0,0.0,5.633802816901413,True,False,False,,0.0,"Low volume stock (total 256,087 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:06:00-05:00,0.758,2600,0,1.0666666666666678,2.4324324324324347,True,False,False,,0.0,"Low volume stock (total 256,442 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:07:00-05:00,0.758,700,0,1.0666666666666678,1.0801440192025598,True,False,False,,0.0,"Low volume stock (total 254,948 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:08:00-05:00,0.75,700,0,0.0,1.2829169480080962,True,False,False,,0.0,"Low volume stock (total 252,632 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:09:00-05:00,0.76,500,0,1.3333333333333344,2.633355840648205,True,False,False,,0.0,"Low volume stock (total 247,893 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:10:00-05:00,0.7539,10,0,-0.5408970976253288,0.520000000000002,True,False,False,,0.0,"Low volume stock (total 246,068 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:11:00-05:00,0.7502,18006,0,-1.0290237467018508,0.02666666666666373,True,False,False,,0.0,"Low volume stock (total 261,987 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:12:00-05:00,0.7539,11200,0,0.520000000000002,0.520000000000002,True,False,False,,0.0,"Low volume stock (total 270,924 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:13:00-05:00,0.7507,1652,0,-1.2236842105263124,0.09333333333333785,True,False,False,,0.0,"Low volume stock (total 264,207 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:15:00-05:00,0.765,4935,0,1.472343812176681,2.0000000000000018,True,False,False,,0.0,"Low volume stock (total 266,172 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:16:00-05:00,0.77,50,0,2.6392961876832897,1.5831134564643814,True,False,False,,0.0,"Low volume stock (total 263,217 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:17:00-05:00,0.7755,3067,0,2.865101472343806,2.308707124010549,True,False,False,,0.0,"Low volume stock (total 258,570 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:18:00-05:00,0.78,1165,0,3.9030238444118814,4.0000000000000036,True,False,False,,0.0,"Low volume stock (total 258,346 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:19:00-05:00,0.7755,4721,0,1.3725490196078372,2.0394736842105208,True,False,False,,0.0,"Low volume stock (total 256,735 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:20:00-05:00,0.79,11610,0,2.5974025974025996,4.788433479241282,True,False,False,,0.0,"Low volume stock (total 266,354 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:21:00-05:00,0.77,16655,0,-0.7092198581560218,2.6392961876832897,True,False,False,,0.0,"Low volume stock (total 282,630 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:22:00-05:00,0.762,300,0,-2.3076923076923097,1.074413052128929,True,False,False,,0.0,"Low volume stock (total 280,507 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:23:00-05:00,0.773,1050,0,-0.3223726627981878,2.970560809910748,True,False,False,,0.0,"Low volume stock (total 274,321 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:24:00-05:00,0.774,1031,0,-2.0253164556962044,1.176470588235295,True,False,False,,0.0,"Low volume stock (total 273,544 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:25:00-05:00,0.7837,3464,0,1.7792207792207706,1.7792207792207706,True,False,False,,0.0,"Low volume stock (total 270,502 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:26:00-05:00,0.79,9300,0,3.6745406824147016,1.8697614442295383,True,False,False,,0.0,"Low volume stock (total 278,741 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:27:00-05:00,0.785,1650,0,1.552393272962485,0.6410256410256416,True,False,False,,0.0,"Low volume stock (total 266,474 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:28:00-05:00,0.7899,1132,0,2.054263565891476,1.856866537717612,True,False,False,,0.0,"Low volume stock (total 259,202 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:29:00-05:00,0.766,12288,0,-2.2585172897792445,-3.0379746835443067,True,False,False,,0.0,"Low volume stock (total 216,780 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:30:00-05:00,0.78,1001,0,-1.2658227848101276,1.2987012987012998,True,False,False,,0.0,"Low volume stock (total 217,662 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:31:00-05:00,0.785,138,0,0.0,3.0183727034120764,True,False,False,,0.0,"Low volume stock (total 217,797 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:32:00-05:00,0.7977,5051,0,0.9874667679452991,3.1953428201811054,True,False,False,,0.0,"Low volume stock (total 222,846 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:33:00-05:00,0.816,22455,0,6.5274151436031245,5.426356589147277,True,False,False,,0.0,"Low volume stock (total 244,201 < 300,000 over 60 min, threshold for hour 8)"
+2026-01-12 08:34:00-05:00,0.8399,76890,0,7.6794871794871735,7.171111394666331,True,False,False,,0.0,"Low volume stock (avg 8,898 < 30,000 required); Pattern 'Double_Bottom' not in best patterns; Low volume stock (avg 8,898 < 30,000 required); Low volume stock (avg 8,898 < 30,000 required)"
+2026-01-12 08:35:00-05:00,0.7908,54468,0,0.7388535031847027,0.10126582278479897,True,False,False,,0.0,False breakout detected; Price $0.7908 not above all MAs
+2026-01-12 08:36:00-05:00,0.7708,21811,0,-3.37219506079979,-1.808917197452228,True,False,False,,0.0,False breakout detected
+2026-01-12 08:37:00-05:00,0.7896,18575,0,-3.235294117647056,-0.037979491074829466,True,False,False,,0.0,False breakout detected
+2026-01-12 08:38:00-05:00,0.7959,1013,0,-5.238718895106552,3.903394255874679,True,False,False,,0.0,False breakout detected
+2026-01-12 08:39:00-05:00,0.809,15378,0,2.301466868993438,3.7179487179487216,True,False,False,,0.0,False breakout detected
+2026-01-12 08:40:00-05:00,0.8089,17709,0,4.942916450441088,3.0445859872611365,True,False,False,,0.0,False breakout detected
+2026-01-12 08:41:00-05:00,0.7979,113517,0,1.0511651469098386,0.025072082236440894,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Price $0.7979 not above all MAs
+2026-01-12 08:42:00-05:00,0.78,3994,0,-1.9977384093479111,-4.4117647058823435,True,False,False,,0.0,False breakout detected
+2026-01-12 08:43:00-05:00,0.79,1807,0,-2.3485784919653914,-5.9411834742231155,True,False,False,,0.0,False breakout detected
+2026-01-12 08:44:00-05:00,0.7885,645,0,-2.521943379898625,-0.2908447142134508,True,False,False,,0.0,False breakout detected
+2026-01-12 08:45:00-05:00,0.7978,11817,0,-0.012532898859518736,3.5028541774779334,True,False,False,,0.0,False breakout detected
+2026-01-12 08:46:00-05:00,0.7978,921,0,2.2820512820512726,1.0385005065856112,True,False,False,,0.0,False breakout detected
+2026-01-12 08:47:00-05:00,0.7831,2605,0,-0.8734177215189894,-1.608242241487628,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:48:00-05:00,0.7977,14219,0,1.1667723525681657,-1.3967861557478476,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:49:00-05:00,0.7978,540,0,0.0,-1.372233897886018,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:50:00-05:00,0.7812,3554,0,-2.0807219854600087,-2.092994109537542,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:51:00-05:00,0.7811,13729,0,-0.25539522410930937,0.14102564102563972,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:52:00-05:00,0.7947,220,0,-0.3760812335464464,0.5949367088607501,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:53:00-05:00,0.795,5002,0,-0.3509651541739677,0.8243500317057781,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:54:00-05:00,0.7768,55621,0,-0.5632360471070097,-2.6322386563048266,True,False,False,,0.0,Confidence 65.0% < 70% required; False breakout detected; Price $0.7768 not above all MAs
+2026-01-12 08:55:00-05:00,0.781,69,0,-0.012802458071948405,-2.1057909250438613,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:56:00-05:00,0.795,5150,0,0.037750094375245756,1.5196015834503922,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:57:00-05:00,0.7811,4300,0,-1.7484276729559778,-2.0809828256236615,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 08:58:00-05:00,0.7948,313,0,2.3171987641606466,-0.3760340937578344,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:00:00-05:00,0.7944,153,0,1.7157490396926975,1.6897081413210433,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:01:00-05:00,0.7906,1146,0,-0.5534591194968642,1.2162335168352263,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:02:00-05:00,0.782,110,0,0.11522212264754984,-1.5980873285516464,True,False,False,,0.0,False breakout detected
+2026-01-12 09:03:00-05:00,0.7949,9679,0,0.01258178158028435,-0.012578616352199872,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; MAs not in bullish order
+2026-01-12 09:04:00-05:00,0.7949,1300,0,0.06294058408862739,2.330072090628219,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:05:00-05:00,0.781,4615,0,-1.2142676448267065,0.0,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:06:00-05:00,0.7899,25360,0,1.0102301790281354,-0.6415094339622632,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; MAs not in bullish order
+2026-01-12 09:07:00-05:00,0.7899,30197,0,-0.6290099383570266,1.1266163103315874,True,False,False,,0.0,False breakout detected; Price $0.7899 not above all MAs
+2026-01-12 09:08:00-05:00,0.7901,13212,0,-0.6038495408227482,-0.5913437342727639,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Price $0.7901 not above all MAs
+2026-01-12 09:09:00-05:00,0.79,876,0,1.1523687580025617,-0.5538771399798539,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:10:00-05:00,0.7966,2015,0,0.8482086340042951,0.758917278016697,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:11:00-05:00,0.8,1362,0,1.2786428661855929,2.301790281329925,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:12:00-05:00,0.8,1217,0,1.2530059486141019,0.6415901371241657,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:13:00-05:00,0.8079,1851,0,2.265822784810116,1.635425839728255,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:14:00-05:00,0.798,12277,0,0.17574692442883103,2.176696542893728,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:15:00-05:00,0.8079,3,0,0.9874999999999884,2.2787694644891636,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:16:00-05:00,0.8078,1,0,0.9749999999999898,2.266109634130892,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:17:00-05:00,0.8,589,0,-0.9778437925485713,1.2530059486141019,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:18:00-05:00,0.8078,62006,0,1.2280701754385865,2.253164556962016,True,False,False,,0.0,"Pattern 'Double_Bottom' not in best patterns; Low volume stock (avg 8,414 < 30,000 required); Low volume stock (avg 8,414 < 30,000 required)"
+2026-01-12 09:19:00-05:00,0.8058,3840,0,-0.25993316004455885,1.1549083605322605,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:20:00-05:00,0.81,6031,0,0.2723446397623287,1.250000000000001,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:21:00-05:00,0.8193,4678,0,2.412499999999998,2.412499999999998,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:22:00-05:00,0.8239,12588,0,1.9930675909878688,1.9804431241490301,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:23:00-05:00,0.8306,2368,0,3.0776867709109017,4.085213032581449,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:24:00-05:00,0.8381,9329,0,3.4691358024691232,3.7380863968312914,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:25:00-05:00,0.8005,85140,0,-2.2946417673623873,-0.9036890319385954,True,False,False,,0.0,False breakout detected; Price $0.8005 not above all MAs
+2026-01-12 09:26:00-05:00,0.8005,3176,0,-2.840150503701903,0.06249999999999312,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:27:00-05:00,0.82,22285,0,-1.2761858897182823,1.5102748205001226,True,False,False,,0.0,False breakout detected
+2026-01-12 09:28:00-05:00,0.8398,8111,0,0.20283975659229625,4.2194092827004255,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:29:00-05:00,0.8398,6221,0,4.909431605246721,3.6790123456790043,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:30:00-05:00,0.85,7777,0,6.18363522798251,3.7471011839375015,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:31:00-05:00,0.8168,512181,0,-0.3902439024390221,-0.8617550673625435,True,False,False,,0.0,False breakout detected; Price $0.8168 not above all MAs
+2026-01-12 09:32:00-05:00,0.8303,129646,0,-1.131221719457008,-0.03611846857692836,True,False,False,,0.0,False breakout detected; Price $0.8303 not above all MAs; Price $0.8303 not above all MAs
+2026-01-12 09:33:00-05:00,0.821,110669,0,-2.2386282448202,-2.0403293163107032,True,False,False,,0.0,False breakout detected; Price $0.8210 not above all MAs
+2026-01-12 09:34:00-05:00,0.8657,164786,0,1.8470588235294172,8.144909431605251,True,False,False,,0.0,Setup not confirmed for multiple periods; Pattern 'Double_Bottom' not in best patterns; Setup not confirmed for multiple periods; Setup not confirmed for multiple periods
+2026-01-12 09:35:00-05:00,0.8821,688590,0,7.994613124387858,10.193628981886322,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Too volatile (8.7% range in 5 periods); Too volatile (8.7% range in 5 periods)
+2026-01-12 09:36:00-05:00,0.8989,504442,0,8.262073949174995,9.621951219512205,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Too volatile (16.2% range in 5 periods); Too volatile (16.2% range in 5 periods)
+2026-01-12 09:37:00-05:00,0.8778,593645,0,6.918392204628511,4.524886877828059,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Price not showing upward momentum
+2026-01-12 09:38:00-05:00,0.8582,481798,0,-0.8663509298833385,2.1909978566325283,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Price $0.8582 not above all MAs
+2026-01-12 09:39:00-05:00,0.8261,277160,0,-6.348486566148968,-2.8117647058823567,True,False,False,,0.0,False breakout detected
+2026-01-12 09:40:00-05:00,0.8503,303646,0,-5.406608076538,4.10137120470127,True,False,False,,0.0,False breakout detected
+2026-01-12 09:41:00-05:00,0.8604,222825,0,-1.9822282980177681,3.6251957123931122,True,False,False,,0.0,False breakout detected
+2026-01-12 09:42:00-05:00,0.8892,250071,0,3.612211605686324,8.306942752740564,True,False,False,,0.0,False breakout detected
+2026-01-12 09:43:00-05:00,0.8927,315786,0,8.061977968768927,3.118863347579996,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; MAs not in bullish order
+2026-01-12 09:44:00-05:00,0.8758,117028,0,2.9989415500411716,-0.7142047386917552,True,False,False,,0.0,False breakout detected
+2026-01-12 09:45:00-05:00,0.8968,387121,0,4.2305904230590405,-0.23361886750472696,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Too volatile (9.2% range in 5 periods)
+2026-01-12 09:46:00-05:00,0.8845,146256,0,-0.528565002249217,0.7632718159033867,True,False,False,,0.0,False breakout detected
+2026-01-12 09:47:00-05:00,0.8858,125653,0,-0.7729360367424686,3.2160335586110547,True,False,False,,0.0,False breakout detected
+2026-01-12 09:48:00-05:00,0.8864,111012,0,1.2103219913222132,7.299358431182669,True,False,False,,0.0,False breakout detected
+2026-01-12 09:49:00-05:00,0.887,88452,0,-1.092774308652992,4.3161237210396415,True,False,False,,0.0,False breakout detected
+2026-01-12 09:50:00-05:00,0.8783,76608,0,-0.7009609949123781,2.0804277080427607,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:51:00-05:00,0.8648,99139,0,-2.370738315646875,-2.7440395861448468,True,False,False,,0.0,False breakout detected
+2026-01-12 09:52:00-05:00,0.8791,51239,0,-0.8235559566786973,-1.523468130390955,True,False,False,,0.0,False breakout detected
+2026-01-12 09:53:00-05:00,0.8643,201703,0,-2.5591882750845607,-1.3130851792646798,True,False,False,,0.0,False breakout detected
+2026-01-12 09:54:00-05:00,0.8662,153800,0,-1.3776613913241489,-3.4121320249777063,True,False,False,,0.0,False breakout detected
+2026-01-12 09:55:00-05:00,0.8799,130785,0,1.7460684551341352,-0.5200678349349844,True,False,False,,0.0,False breakout detected
+2026-01-12 09:56:00-05:00,0.8768,206580,0,-0.2616312137413228,-1.0160307067058034,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:57:00-05:00,0.8615,146496,0,-0.32396158741176834,-2.8091155234656955,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:58:00-05:00,0.877,127385,0,1.246825213576545,-1.1273957158962806,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns
+2026-01-12 09:59:00-05:00,0.8658,50420,0,-1.6024548244118653,-1.4232039166571735,True,False,False,,0.0,False breakout detected
+2026-01-12 10:00:00-05:00,0.8649,56807,0,-1.3572080291970827,0.011563367252542667,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:01:00-05:00,0.8783,174201,0,1.9500870574579134,-0.09100216130133351,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:02:00-05:00,0.88,168392,0,0.3420752565564427,1.8164989008446197,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:03:00-05:00,0.8744,111718,0,0.9933009933009865,0.9466635880858908,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:04:00-05:00,0.8797,72757,0,1.7111804832928703,-0.02272985566541402,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:05:00-05:00,0.8702,156333,0,-0.9222361379938513,-0.7527372262773779,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:06:00-05:00,0.873,59268,0,-0.7954545454545462,1.3348810214741678,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:07:00-05:00,0.8673,68800,0,-0.8119853613906673,-1.1060433295325018,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:08:00-05:00,0.867,77281,0,-1.4436739797658342,0.13860013860013615,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:09:00-05:00,0.8744,103732,0,0.4826476672029397,1.0983928777893344,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:10:00-05:00,0.8731,40680,0,0.011454753722793698,-0.5920528293293844,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:11:00-05:00,0.8699,150759,0,0.2997809293208863,-1.1477272727272725,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:12:00-05:00,0.8824,127571,0,1.7762399077277935,0.9149130832570915,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:13:00-05:00,0.8751,173082,0,0.08005489478499932,-0.5229055359781799,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:14:00-05:00,0.8899,162142,0,1.9241782155537783,2.263847391404281,True,False,False,,0.0,Confidence 70.0% < 72% required; Volume ratio 1.37x < 1.5x required
+2026-01-12 10:15:00-05:00,0.89,330378,0,2.3106104149902293,1.947308132875145,True,False,False,,0.0,Confidence 70.0% < 72% required; Not in longer-term uptrend (1.1% < 2% required); Not in longer-term uptrend (1.1% < 2% required)
+2026-01-12 10:16:00-05:00,0.8774,212132,0,-0.5666364460562109,1.164533610054191,True,False,False,,0.0,Confidence 70.0% < 72% required; Price $0.8774 not above all MAs
+2026-01-12 10:17:00-05:00,0.893,189099,0,2.0454805165124017,2.998846597462517,True,False,False,,0.0,Confidence 70.0% < 72% required; Volume ratio 1.45x < 1.5x required
+2026-01-12 10:18:00-05:00,0.9394,784673,0,5.562422744128552,7.433668801463868,True,False,False,,0.0,Perfect setup score 5.5 < required 6; Pattern 'Double_Bottom' not in best patterns; Perfect setup score 5.5 < required 6; Perfect setup score 5.5 < required 6
+2026-01-12 10:19:00-05:00,0.9636,1217985,0,8.269662921348313,10.365364792120035,True,False,True,Volume_Breakout,80.0,None
+2026-01-12 10:20:00-05:00,0.9344,1098566,0,6.496466833827223,7.4146453615358086,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Price not showing upward momentum
+2026-01-12 10:21:00-05:00,0.9447,778606,0,5.789473684210523,7.060290117860384,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Too volatile (11.2% range in 5 periods); Too volatile (11.2% range in 5 periods)
+2026-01-12 10:22:00-05:00,0.9515,944955,0,1.2880562060889928,8.73043080790767,True,False,False,,0.0,Pattern 'Double_Bottom' not in best patterns; Too volatile (11.2% range in 5 periods); Too volatile (11.2% range in 5 periods)
+2026-01-12 10:23:00-05:00,0.9131,657508,0,-5.240763802407637,2.6070344982582307,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:24:00-05:00,0.9036,706925,0,-3.296232876712334,1.5280898876404432,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:25:00-05:00,0.9111,865272,0,-3.556684661797392,3.840893549122414,True,False,False,,0.0,Confidence 70.0% < 72% required; Price $0.9111 not above all MAs
+2026-01-12 10:26:00-05:00,0.9142,276275,0,-3.9201261166579084,2.3740201567749155,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:27:00-05:00,0.8916,662136,0,-2.3546161428102153,-5.088354268682145,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:28:00-05:00,0.9089,104098,0,0.5865427180168308,-5.67662930676629,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:29:00-05:00,0.9002,117251,0,-1.1963560531226012,-3.660102739726028,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:30:00-05:00,0.919,170745,0,0.5250492233646933,-2.720440351434312,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:31:00-05:00,0.9298,485001,0,4.284432480933155,-2.2806095638465638,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:32:00-05:00,0.9195,622735,0,1.1662449114313942,0.7009089913481503,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:33:00-05:00,0.9782,1271000,0,8.66474116862919,8.255865427180169,True,False,False,,0.0,MAs not in bullish order; Confidence 70.0% < 72% required; MAs not in bullish order; MAs not in bullish order
+2026-01-12 10:34:00-05:00,0.951,886916,0,3.482045701849828,4.379321699045103,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:35:00-05:00,0.9472,812846,0,1.8713701871370276,3.60971341063225,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:36:00-05:00,0.9221,430216,0,0.2827623708537299,3.4208165096455905,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:37:00-05:00,0.9134,451067,0,-6.624412185647103,0.4951039718340795,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:38:00-05:00,0.8714,1185374,0,-8.37013669821241,-3.199289046878477,True,False,False,,0.0,Confidence 65.0% < 72% required; Confidence 70.0% < 72% required; Confidence 68.0% < 72% required
+2026-01-12 10:39:00-05:00,0.872,668508,0,-7.939189189189194,-5.114254624591952,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:40:00-05:00,0.8919,235027,0,-3.275132848931787,-4.076145407614534,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:41:00-05:00,0.8935,288916,0,-2.17867308955551,-2.827623708537251,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:42:00-05:00,0.9193,259638,0,5.496901537755343,-6.021263545287258,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:43:00-05:00,0.9279,488207,0,6.41055045871559,-2.4290220820189288,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:44:00-05:00,0.9108,249942,0,2.119071644803232,-3.8429054054054035,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:45:00-05:00,0.9215,278884,0,3.133743704532739,-0.06506886454831849,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:46:00-05:00,0.9277,356799,0,0.913738714239091,1.5655791548062163,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:47:00-05:00,0.94,470794,0,1.3040198297230305,7.872389258664218,True,False,False,,0.0,Confidence 70.0% < 72% required; MAs not in bullish order
+2026-01-12 10:48:00-05:00,0.938,243993,0,2.9863855950812352,7.568807339449535,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:49:00-05:00,0.9761,1103201,0,5.925122083559412,9.440520237694802,True,False,False,,0.0,Perfect setup score 5.5 < required 6; Confidence 70.0% < 72% required; Perfect setup score 5.5 < required 6; Perfect setup score 5.5 < required 6
+2026-01-12 10:50:00-05:00,0.9591,635923,0,3.38471488627789,7.3419138220481255,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:51:00-05:00,0.9924,1205037,0,5.574468085106384,7.951702382247356,True,False,False,,0.0,Confidence 70.0% < 72% required; Setup not confirmed for multiple periods
+2026-01-12 10:52:00-05:00,1.005,1102542,0,7.142857142857138,8.309085030714511,True,False,False,,0.0,Confidence 70.0% < 72% required; Perfect setup score 5.0 < required 6
+2026-01-12 10:53:00-05:00,1.02,1082056,0,4.497490011269342,11.989459815546768,True,False,False,,0.0,Confidence 70.0% < 72% required; Too volatile (8.5% range in 5 periods)
+2026-01-12 10:54:00-05:00,1.02,405601,0,6.349702846418524,10.689093868692353,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:55:00-05:00,1.049,1222987,0,5.703345425231761,13.07534763393338,True,False,False,,0.0,Confidence 70.0% < 72% required; Volume declining
+2026-01-12 10:56:00-05:00,1.075,1023960,0,6.965174129353241,14.361702127659576,True,False,False,,0.0,Confidence 70.0% < 72% required; Too volatile (11.0% range in 5 periods)
+2026-01-12 10:57:00-05:00,1.06,962423,0,3.921568627450984,13.006396588486153,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:58:00-05:00,1.07,346480,0,4.901960784313729,9.619915992213922,True,False,False,,0.0,Confidence 70.0% < 72% required
+2026-01-12 10:59:00-05:00,1.027,1574862,0,-2.0972354623450924,7.079553748305699,True,False,False,,0.0,Confidence 70.0% < 72% required; Price $1.0270 not above all MAs
+2026-01-12 11:00:00-05:00,1.059,664534,0,-1.4883720930232571,6.711003627569529,True,True,False,,0.0,Confidence 70.0% < 72% required

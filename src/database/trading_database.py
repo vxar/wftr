@@ -62,8 +62,17 @@ class TradingDatabase:
     def _initialize_database(self):
         """Create database tables if they don't exist"""
         try:
-            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+            # Use WAL mode for better concurrency and add timeout
+            self.conn = sqlite3.connect(
+                self.db_path, 
+                check_same_thread=False,
+                timeout=30.0  # 30 second timeout for database operations
+            )
             self.conn.row_factory = sqlite3.Row  # Enable column access by name
+            
+            # Enable WAL mode for better concurrent access
+            self.conn.execute("PRAGMA journal_mode=WAL")
+            self.conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
             
             cursor = self.conn.cursor()
             
@@ -355,45 +364,77 @@ class TradingDatabase:
         Remove all inactive positions from the database
         This should be called periodically to clean up any stale positions
         """
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute("""
-                DELETE FROM positions
-                WHERE is_active = 0
-            """)
-            deleted_count = cursor.rowcount
-            self.conn.commit()
-            if deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} inactive position(s) from database")
-            return deleted_count
-        except Exception as e:
-            logger.error(f"Error cleaning up inactive positions: {e}")
-            self.conn.rollback()
-            return 0
+        max_retries = 3
+        retry_delay = 0.1  # Start with 100ms delay
+        
+        for attempt in range(max_retries):
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("""
+                    DELETE FROM positions
+                    WHERE is_active = 0
+                """)
+                deleted_count = cursor.rowcount
+                self.conn.commit()
+                if deleted_count > 0:
+                    logger.info(f"Cleaned up {deleted_count} inactive position(s) from database")
+                return deleted_count
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                    # Retry with exponential backoff
+                    import time
+                    time.sleep(retry_delay * (2 ** attempt))
+                    logger.debug(f"Database locked, retrying cleanup_inactive_positions (attempt {attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    logger.error(f"Error cleaning up inactive positions: {e}")
+                    self.conn.rollback()
+                    return 0
+            except Exception as e:
+                logger.error(f"Error cleaning up inactive positions: {e}")
+                self.conn.rollback()
+                return 0
+        return 0
     
     def cleanup_orphaned_positions(self):
         """
         Remove positions that have corresponding completed trades
         This ensures positions table only contains truly active positions
         """
-        try:
-            cursor = self.conn.cursor()
-            # Find positions that have completed trades
-            cursor.execute("""
-                DELETE FROM positions
-                WHERE ticker IN (
-                    SELECT DISTINCT ticker FROM trades
-                )
-            """)
-            deleted_count = cursor.rowcount
-            self.conn.commit()
-            if deleted_count > 0:
-                logger.info(f"Cleaned up {deleted_count} orphaned position(s) (positions with completed trades)")
-            return deleted_count
-        except Exception as e:
-            logger.error(f"Error cleaning up orphaned positions: {e}")
-            self.conn.rollback()
-            return 0
+        max_retries = 3
+        retry_delay = 0.1  # Start with 100ms delay
+        
+        for attempt in range(max_retries):
+            try:
+                cursor = self.conn.cursor()
+                # Find positions that have completed trades
+                cursor.execute("""
+                    DELETE FROM positions
+                    WHERE ticker IN (
+                        SELECT DISTINCT ticker FROM trades
+                    )
+                """)
+                deleted_count = cursor.rowcount
+                self.conn.commit()
+                if deleted_count > 0:
+                    logger.info(f"Cleaned up {deleted_count} orphaned position(s) (positions with completed trades)")
+                return deleted_count
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                    # Retry with exponential backoff
+                    import time
+                    time.sleep(retry_delay * (2 ** attempt))
+                    logger.debug(f"Database locked, retrying cleanup_orphaned_positions (attempt {attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    logger.error(f"Error cleaning up orphaned positions: {e}")
+                    self.conn.rollback()
+                    return 0
+            except Exception as e:
+                logger.error(f"Error cleaning up orphaned positions: {e}")
+                self.conn.rollback()
+                return 0
+        return 0
     
     def get_all_trades(self, limit: Optional[int] = None) -> List[Dict]:
         """
@@ -520,30 +561,34 @@ class TradingDatabase:
                     # Fallback: use standard columns
                     select_columns = base_columns
             
-            # First, clean up any corrupted positions (where id or ticker is NULL)
-            try:
-                cleanup_cursor = self.conn.cursor()
-                deleted = cleanup_cursor.execute(
-                    "DELETE FROM positions WHERE (id IS NULL OR ticker IS NULL OR ticker = '') AND is_active = 1"
-                ).rowcount
-                if deleted > 0:
-                    self.conn.commit()
-                    logger.info(f"Cleaned up {deleted} corrupted position(s) from database")
-            except Exception as e:
-                logger.warning(f"Error cleaning up corrupted positions: {e}")
-            
-            # First, clean up any corrupted positions (where id or ticker is NULL)
+            # Clean up any corrupted positions (where id or ticker is NULL)
             # This prevents them from being selected and causing warnings
-            try:
-                cleanup_cursor = self.conn.cursor()
-                deleted = cleanup_cursor.execute(
-                    "DELETE FROM positions WHERE (id IS NULL OR ticker IS NULL OR ticker = '') AND is_active = 1"
-                ).rowcount
-                if deleted > 0:
-                    self.conn.commit()
-                    logger.info(f"Cleaned up {deleted} corrupted position(s) from database")
-            except Exception as e:
-                logger.warning(f"Error cleaning up corrupted positions: {e}")
+            max_retries = 3
+            retry_delay = 0.1
+            
+            for attempt in range(max_retries):
+                try:
+                    cleanup_cursor = self.conn.cursor()
+                    deleted = cleanup_cursor.execute(
+                        "DELETE FROM positions WHERE (id IS NULL OR ticker IS NULL OR ticker = '') AND is_active = 1"
+                    ).rowcount
+                    if deleted > 0:
+                        self.conn.commit()
+                        logger.info(f"Cleaned up {deleted} corrupted position(s) from database")
+                    break  # Success, exit retry loop
+                except sqlite3.OperationalError as e:
+                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                        # Retry with exponential backoff
+                        import time
+                        time.sleep(retry_delay * (2 ** attempt))
+                        logger.debug(f"Database locked, retrying cleanup_corrupted_positions (attempt {attempt + 1}/{max_retries})")
+                        continue
+                    else:
+                        logger.warning(f"Error cleaning up corrupted positions: {e}")
+                        break
+                except Exception as e:
+                    logger.warning(f"Error cleaning up corrupted positions: {e}")
+                    break
             
             # Filter out null/empty tickers at SQL level
             # Also filter out rows where id is NULL (corrupted rows)

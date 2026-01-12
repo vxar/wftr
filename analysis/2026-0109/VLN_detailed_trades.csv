@@ -1,0 +1,5 @@
+Ticker,Entry_Time,Entry_Price,Exit_Time,Exit_Price,Pattern,Score,Confidence,Exit_Reason,Hold_Time_Min,PnL_Pct,PnL_Dollar
+VLN,2026-01-09 09:41:00,1.73,2026-01-09 10:04:00,1.875,RSI_Accumulation_Entry,7,75.0%,Strong Reversal (3 signals),23.0,8.38%,$0.15
+VLN,2026-01-09 10:46:00,2.02,2026-01-09 11:13:00,2.07,Slow_Accumulation,7,80.0%,Strong Reversal (4 signals),27.0,2.48%,$0.05
+VLN,2026-01-09 12:12:00,2.165,2026-01-09 12:43:00,2.3,Golden_Cross_Volume,7,78.0%,Strong Reversal (3 signals),31.0,6.24%,$0.13
+VLN,2026-01-09 14:39:00,2.455,2026-01-09 14:49:00,2.575,Slow_Accumulation,7,80.0%,End of Day,10.0,4.89%,$0.12

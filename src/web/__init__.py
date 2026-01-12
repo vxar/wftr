@@ -2,7 +2,7 @@
 Web Interface Package
 Contains Flask web application and API endpoints
 """
-from web.trading_web_interface import (
+from .trading_web_interface import (
     set_trading_bot,
     run_web_server,
     app

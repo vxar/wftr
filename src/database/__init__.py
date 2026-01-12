@@ -2,7 +2,7 @@
 Database Package
 Contains database operations and models
 """
-from database.trading_database import (
+from .trading_database import (
     TradingDatabase,
     TradeRecord,
     PositionRecord

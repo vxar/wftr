@@ -808,14 +808,14 @@ class LiveTradingBot:
             # 1. Check if trading is paused
             if self.trading_paused:
                 reason = f"Trading paused: {self.pause_reason}"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
             # 2. Check daily trade limit
             if self.daily_trade_count >= self.max_trades_per_day:
                 reason = f"Daily trade limit reached ({self.daily_trade_count}/{self.max_trades_per_day})"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
@@ -831,13 +831,13 @@ class LiveTradingBot:
             # Reject stocks below $0.50 minimum price
             if signal.price < 0.50:
                 reason = "Price below minimum $0.50"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
             if position_value < 100:  # Minimum $100 to trade
                 reason = f"Insufficient capital (${self.current_capital:.2f} < $100)"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
@@ -847,7 +847,7 @@ class LiveTradingBot:
             # Check if we already have a position in this ticker
             if signal.ticker in self.trader.active_positions:
                 reason = f"Already have position in {signal.ticker}"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
@@ -856,7 +856,7 @@ class LiveTradingBot:
                 db_positions = self.db.get_active_positions()
                 if any(p['ticker'] == signal.ticker for p in db_positions):
                     reason = "Already have position in database"
-                    logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                    logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                     self._add_rejected_entry(signal.ticker, signal.price, reason)
                     return False
             
@@ -867,12 +867,12 @@ class LiveTradingBot:
                 
                 if time_since_exit < self.re_entry_cooldown_minutes:
                     reason = f"Re-entry cooldown active: {time_since_exit:.1f} min < {self.re_entry_cooldown_minutes} min"
-                    logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                    logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                     self._add_rejected_entry(signal.ticker, signal.price, reason)
                     return False
                 else:
                     # Cooldown passed, allow re-entry
-                    logger.info(f"✅ Re-entry cooldown passed for {signal.ticker} ({time_since_exit:.1f} min). Allowing re-entry after previous exit.")
+                    logger.info(f"[OK] Re-entry cooldown passed for {signal.ticker} ({time_since_exit:.1f} min). Allowing re-entry after previous exit.")
                     # Remove from exit tracking to allow entry
                     del self.ticker_exit_times[signal.ticker]
             
@@ -888,7 +888,7 @@ class LiveTradingBot:
             total_positions = memory_position_count + db_position_count
             if total_positions >= self.max_positions:
                 reason = f"At max positions ({total_positions}/{self.max_positions})"
-                logger.warning(f"❌ REJECTED ENTRY: {signal.ticker} @ ${signal.price:.4f} - {reason}")
+                logger.warning(f"[REJECTED] Entry: {signal.ticker} @ ${signal.price:.4f} - {reason}")
                 self._add_rejected_entry(signal.ticker, signal.price, reason)
                 return False
             
@@ -1443,11 +1443,11 @@ class LiveTradingBot:
                 
                 # Process entry signal (if we have capital and room)
                 if entry_signal:
-                    logger.info(f"✅ ENTRY SIGNAL FOUND: {entry_signal.ticker} @ ${entry_signal.price:.4f} - {entry_signal.pattern_name} ({entry_signal.confidence*100:.1f}%)")
+                    logger.info(f"[ENTRY SIGNAL] Found: {entry_signal.ticker} @ ${entry_signal.price:.4f} - {entry_signal.pattern_name} ({entry_signal.confidence*100:.1f}%)")
                     if self.current_capital <= 100:
-                        logger.warning(f"❌ REJECTED ENTRY: {entry_signal.ticker} - Insufficient capital (${self.current_capital:.2f} < $100)")
+                        logger.warning(f"[REJECTED] Entry: {entry_signal.ticker} - Insufficient capital (${self.current_capital:.2f} < $100)")
                     elif len(self.trader.active_positions) >= self.max_positions:
-                        logger.warning(f"❌ REJECTED ENTRY: {entry_signal.ticker} - At max positions ({len(self.trader.active_positions)}/{self.max_positions})")
+                        logger.warning(f"[REJECTED] Entry: {entry_signal.ticker} - At max positions ({len(self.trader.active_positions)}/{self.max_positions})")
                     else:
                         self._execute_entry(entry_signal)
                 

@@ -510,7 +510,7 @@
                 <div id="botStatus" class="status-checking" title="Status: Checking..."></div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="autoRefresh" checked>
-                    <label for="autoRefresh">Auto-refresh (5s)</label>
+                    <label for="autoRefresh">Auto-refresh (30s)</label>
                 </div>
             </div>
         </div>
@@ -588,6 +588,7 @@
     
     <script>
         let autoRefreshInterval = null;
+        let autoRefreshTimeout = null;
         
         function toggleSection(header) {
             const section = header.closest('.section');
@@ -916,14 +917,49 @@
             }
         }
         
+        function startAutoRefresh() {
+            // Clear any existing intervals/timeouts
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            if (autoRefreshTimeout) {
+                clearTimeout(autoRefreshTimeout);
+                autoRefreshTimeout = null;
+            }
+            
+            // Schedule refresh every 30 seconds
+            function scheduleNextRefresh() {
+                // Load data immediately on first call
+                loadData();
+                updateBotStatusFromData();
+                
+                // Then set interval for every 30 seconds
+                autoRefreshInterval = setInterval(() => {
+                    loadData();
+                    updateBotStatusFromData();
+                }, 30000); // 30 seconds = 30000 milliseconds
+            }
+            
+            scheduleNextRefresh();
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+            if (autoRefreshTimeout) {
+                clearTimeout(autoRefreshTimeout);
+                autoRefreshTimeout = null;
+            }
+        }
+        
         document.getElementById('autoRefresh').addEventListener('change', function(e) {
             if (e.target.checked) {
-                autoRefreshInterval = setInterval(loadData, 5000);
+                startAutoRefresh();
             } else {
-                if (autoRefreshInterval) {
-                    clearInterval(autoRefreshInterval);
-                    autoRefreshInterval = null;
-                }
+                stopAutoRefresh();
             }
         });
         
@@ -1059,10 +1095,7 @@
         updateBotStatusFromData();
         
         if (document.getElementById('autoRefresh').checked) {
-            autoRefreshInterval = setInterval(() => {
-                loadData();
-                updateBotStatusFromData();
-            }, 5000);
+            startAutoRefresh();
         }
     </script>
 </body>

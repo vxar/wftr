@@ -1,0 +1,2354 @@
+﻿
+================================================================================
+ANPA FULL DAY SIMULATION (From 4:00 AM)
+================================================================================
+
+Fetching 1-minute data from 4:00 AM...
+Note: Fetching extended data to cover pre-market and regular hours...
+[OK] Retrieved 800 minutes of data
+   Date range: 2025-12-02 11:15:00-05:00 to 2026-01-09 13:31:00-05:00
+
+Trading Day: 2025-12-02
+Start Time: 2025-12-02 04:00:00 EST
+[OK] Filtered to 800 minutes from 4:00 AM onwards
+   Data range: 2025-12-02 11:15:00-05:00 to 2026-01-09 13:31:00-05:00
+
+Calculating indicators...
+[OK] Indicators calculated for 800 data points
+
+================================================================================
+SIMULATING MINUTE BY MINUTE
+================================================================================
+
+
+[12:31:00] Price: $17.7500 | Signals: 0 | Rejections: 0 | Active: 0 | Completed: 0
+
+[14:04:00] Price: $24.3100 | Signals: 0 | Rejections: 12 | Active: 0 | Completed: 0
+
+[15:03:00] Price: $23.0300 | Signals: 0 | Rejections: 42 | Active: 0 | Completed: 0
+
+[18:34:00] Price: $20.0000 | Signals: 0 | Rejections: 72 | Active: 0 | Completed: 0
+
+[12:04:00] Price: $20.8500 | Signals: 0 | Rejections: 102 | Active: 0 | Completed: 0
+
+[09:49:00] Price: $24.0000 | Signals: 0 | Rejections: 131 | Active: 0 | Completed: 0
+
+[16:07:00] Price: $21.0000 | Signals: 0 | Rejections: 161 | Active: 0 | Completed: 0
+
+[11:24:00] Price: $19.0000 | Signals: 0 | Rejections: 191 | Active: 0 | Completed: 0
+
+[14:38:00] Price: $20.4400 | Signals: 0 | Rejections: 221 | Active: 0 | Completed: 0
+
+[15:00:00] Price: $21.1600 | Signals: 0 | Rejections: 251 | Active: 0 | Completed: 0
+
+[13:05:00] Price: $21.3200 | Signals: 0 | Rejections: 281 | Active: 0 | Completed: 0
+
+[08:01:00] Price: $24.4400 | Signals: 0 | Rejections: 311 | Active: 0 | Completed: 0
+
+[14:38:00] Price: $24.2500 | Signals: 0 | Rejections: 341 | Active: 0 | Completed: 0
+
+[15:12:00] Price: $28.9000 | Signals: 0 | Rejections: 371 | Active: 0 | Completed: 0
+
+[16:13:00] Price: $27.0000 | Signals: 0 | Rejections: 401 | Active: 0 | Completed: 0
+
+[17:09:00] Price: $25.3000 | Signals: 0 | Rejections: 431 | Active: 0 | Completed: 0
+
+[08:02:00] Price: $44.9300 | Signals: 0 | Rejections: 461 | Active: 0 | Completed: 0
+
+[08:32:00] Price: $51.1600 | Signals: 0 | Rejections: 491 | Active: 0 | Completed: 0
+
+[09:02:00] Price: $51.8300 | Signals: 0 | Rejections: 521 | Active: 0 | Completed: 0
+
+[09:32:00] Price: $48.2300 | Signals: 0 | Rejections: 551 | Active: 0 | Completed: 0
+
+[10:02:00] Price: $50.2500 | Signals: 0 | Rejections: 581 | Active: 0 | Completed: 0
+
+[10:34:00] Price: $50.0000 | Signals: 0 | Rejections: 615 | Active: 0 | Completed: 0
+
+[11:15:00] Price: $50.2600 | Signals: 0 | Rejections: 645 | Active: 0 | Completed: 0
+
+[11:59:00] Price: $69.4500 | Signals: 0 | Rejections: 675 | Active: 0 | Completed: 0
+
+[12:32:00] Price: $59.0100 | Signals: 0 | Rejections: 706 | Active: 0 | Completed: 0
+
+[13:12:00] Price: $67.0700 | Signals: 0 | Rejections: 736 | Active: 0 | Completed: 0
+
+================================================================================
+SIMULATION SUMMARY
+================================================================================
+
+Total Entry Signals Found: 0
+Total Exit Signals Found: 0
+Total Rejections: 755
+Completed Trades: 0
+Active Positions at End: 0
+
+================================================================================
+PRICE ANALYSIS
+================================================================================
+
+Starting Price (4:00 AM): $17.7500
+Final Price: $84.5400
+Maximum Price: $84.5400
+Minimum Price: $17.7500
+Maximum Gain Available: 376.28%
+Total Change: 376.28%
+
+================================================================================
+REJECTION REASONS SUMMARY
+================================================================================
+
+False breakout detected: 3 times
+   - 10:04:00 @ $51.0200 (Unknown, 0.0%)
+   - 10:04:00 @ $51.0200 (Unknown, 0.0%)
+   - 12:24:00 @ $58.0000 (Unknown, 0.0%)
+
+Low volume stock (avg 6,212 < 30,000 required): 3 times
+   - 10:10:00 @ $54.9100 (Unknown, 0.0%)
+   - 10:10:00 @ $54.9100 (Unknown, 0.0%)
+   - 10:10:00 @ $54.9100 (Unknown, 0.0%)
+
+Low volume stock (total 19,275 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 2 times
+   - 16:43:00 @ $21.0400 (Unknown, 0.0%)
+   - 08:01:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 27,524 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 2 times
+   - 16:05:00 @ $20.0000 (Unknown, 0.0%)
+   - 16:11:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 29,893 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 2 times
+   - 18:23:00 @ $23.1100 (Unknown, 0.0%)
+   - 09:15:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 52,750 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 2 times
+   - 16:11:00 @ $21.2900 (Unknown, 0.0%)
+   - 08:18:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 53,141 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 2 times
+   - 16:11:00 @ $21.8800 (Unknown, 0.0%)
+   - 16:55:00 @ $21.8900 (Unknown, 0.0%)
+
+Low volume stock (total 32,159 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 2 times
+   - 16:13:00 @ $27.0000 (Unknown, 0.0%)
+   - 16:14:00 @ $26.5000 (Unknown, 0.0%)
+
+Low volume stock (avg 7,144 < 30,000 required): 2 times
+   - 10:11:00 @ $55.2500 (Unknown, 0.0%)
+   - 10:11:00 @ $55.2500 (Unknown, 0.0%)
+
+Low volume stock (total 38,063 < 150,000 over 20 min, extrapolated, threshold based on vol_ratio 1.71x): 1 times
+   - 13:43:00 @ $28.2000 (Unknown, 0.0%)
+
+Low volume stock (total 38,744 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 0.64x): 1 times
+   - 13:44:00 @ $28.1600 (Unknown, 0.0%)
+
+Low volume stock (total 41,605 < 150,000 over 20 min, extrapolated, threshold based on vol_ratio 2.00x): 1 times
+   - 13:45:00 @ $25.7100 (Unknown, 0.0%)
+
+Low volume stock (total 44,271 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 1.42x): 1 times
+   - 13:55:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 48,526 < 133,333 over 20 min, extrapolated, threshold based on vol_ratio 2.10x): 1 times
+   - 13:56:00 @ $25.9600 (Unknown, 0.0%)
+
+Low volume stock (total 50,076 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 1.00x): 1 times
+   - 13:57:00 @ $24.2400 (Unknown, 0.0%)
+
+Low volume stock (total 50,429 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 0.46x): 1 times
+   - 13:58:00 @ $25.1000 (Unknown, 0.0%)
+
+Low volume stock (total 50,955 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 0.47x): 1 times
+   - 13:59:00 @ $24.0000 (Unknown, 0.0%)
+
+Low volume stock (total 50,381 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 0.20x): 1 times
+   - 14:00:00 @ $24.8300 (Unknown, 0.0%)
+
+Low volume stock (total 49,641 < 166,666 over 20 min, extrapolated, threshold based on vol_ratio 0.21x): 1 times
+   - 14:01:00 @ $24.3000 (Unknown, 0.0%)
+
+Low volume stock (total 78,071 < 500,000 over 60 min, threshold based on vol_ratio 0.94x): 1 times
+   - 14:03:00 @ $24.2900 (Unknown, 0.0%)
+
+Low volume stock (total 76,397 < 500,000 over 60 min, threshold based on vol_ratio 0.49x): 1 times
+   - 14:04:00 @ $24.3100 (Unknown, 0.0%)
+
+Low volume stock (total 76,369 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 14:05:00 @ $24.8900 (Unknown, 0.0%)
+
+Low volume stock (total 74,750 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 14:06:00 @ $25.1000 (Unknown, 0.0%)
+
+Low volume stock (total 76,219 < 500,000 over 60 min, threshold based on vol_ratio 0.71x): 1 times
+   - 14:08:00 @ $25.5000 (Unknown, 0.0%)
+
+Low volume stock (total 78,922 < 500,000 over 60 min, threshold based on vol_ratio 1.01x): 1 times
+   - 14:09:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 79,498 < 500,000 over 60 min, threshold based on vol_ratio 0.22x): 1 times
+   - 14:10:00 @ $23.6000 (Unknown, 0.0%)
+
+Low volume stock (total 81,562 < 500,000 over 60 min, threshold based on vol_ratio 0.84x): 1 times
+   - 14:12:00 @ $23.0900 (Unknown, 0.0%)
+
+Low volume stock (total 82,086 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 14:13:00 @ $22.8700 (Unknown, 0.0%)
+
+Low volume stock (total 82,517 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 14:14:00 @ $23.5600 (Unknown, 0.0%)
+
+Low volume stock (total 83,115 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 14:17:00 @ $23.7000 (Unknown, 0.0%)
+
+Low volume stock (total 83,573 < 500,000 over 60 min, threshold based on vol_ratio 0.28x): 1 times
+   - 14:20:00 @ $23.9100 (Unknown, 0.0%)
+
+Low volume stock (total 83,743 < 500,000 over 60 min, threshold based on vol_ratio 0.12x): 1 times
+   - 14:21:00 @ $24.9300 (Unknown, 0.0%)
+
+Low volume stock (total 85,479 < 500,000 over 60 min, threshold based on vol_ratio 1.26x): 1 times
+   - 14:25:00 @ $23.0200 (Unknown, 0.0%)
+
+Low volume stock (total 86,690 < 500,000 over 60 min, threshold based on vol_ratio 1.02x): 1 times
+   - 14:30:00 @ $22.9000 (Unknown, 0.0%)
+
+Low volume stock (total 88,168 < 500,000 over 60 min, threshold based on vol_ratio 1.30x): 1 times
+   - 14:32:00 @ $22.8000 (Unknown, 0.0%)
+
+Low volume stock (total 90,873 < 400,000 over 60 min, threshold based on vol_ratio 2.30x): 1 times
+   - 14:33:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 92,698 < 400,000 over 60 min, threshold based on vol_ratio 2.08x): 1 times
+   - 14:34:00 @ $21.0100 (Unknown, 0.0%)
+
+Low volume stock (total 95,242 < 450,000 over 60 min, threshold based on vol_ratio 1.83x): 1 times
+   - 14:35:00 @ $22.2500 (Unknown, 0.0%)
+
+Low volume stock (total 95,996 < 500,000 over 60 min, threshold based on vol_ratio 0.54x): 1 times
+   - 14:36:00 @ $21.1100 (Unknown, 0.0%)
+
+Low volume stock (total 96,140 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 14:37:00 @ $21.7800 (Unknown, 0.0%)
+
+Low volume stock (total 95,171 < 500,000 over 60 min, threshold based on vol_ratio 0.17x): 1 times
+   - 14:38:00 @ $21.8300 (Unknown, 0.0%)
+
+Low volume stock (total 92,672 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 14:39:00 @ $22.1200 (Unknown, 0.0%)
+
+Low volume stock (total 92,327 < 500,000 over 60 min, threshold based on vol_ratio 0.97x): 1 times
+   - 14:43:00 @ $23.7300 (Unknown, 0.0%)
+
+Low volume stock (total 93,521 < 500,000 over 60 min, threshold based on vol_ratio 1.44x): 1 times
+   - 14:45:00 @ $23.3600 (Unknown, 0.0%)
+
+Low volume stock (total 93,142 < 500,000 over 60 min, threshold based on vol_ratio 0.67x): 1 times
+   - 14:46:00 @ $22.7900 (Unknown, 0.0%)
+
+Low volume stock (total 93,730 < 500,000 over 60 min, threshold based on vol_ratio 0.70x): 1 times
+   - 14:48:00 @ $23.7000 (Unknown, 0.0%)
+
+Low volume stock (total 93,924 < 500,000 over 60 min, threshold based on vol_ratio 0.48x): 1 times
+   - 14:49:00 @ $23.9000 (Unknown, 0.0%)
+
+Low volume stock (total 93,644 < 500,000 over 60 min, threshold based on vol_ratio 0.16x): 1 times
+   - 14:50:00 @ $23.9000 (Unknown, 0.0%)
+
+Low volume stock (total 94,368 < 450,000 over 60 min, threshold based on vol_ratio 1.64x): 1 times
+   - 14:57:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 94,376 < 500,000 over 60 min, threshold based on vol_ratio 0.35x): 1 times
+   - 15:01:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 94,534 < 500,000 over 60 min, threshold based on vol_ratio 0.62x): 1 times
+   - 15:03:00 @ $23.0300 (Unknown, 0.0%)
+
+Low volume stock (total 93,617 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 15:05:00 @ $23.0300 (Unknown, 0.0%)
+
+Low volume stock (total 93,837 < 500,000 over 60 min, threshold based on vol_ratio 0.64x): 1 times
+   - 15:10:00 @ $22.9400 (Unknown, 0.0%)
+
+Low volume stock (total 94,150 < 500,000 over 60 min, threshold based on vol_ratio 1.05x): 1 times
+   - 15:20:00 @ $22.0200 (Unknown, 0.0%)
+
+Low volume stock (total 94,247 < 500,000 over 60 min, threshold based on vol_ratio 0.99x): 1 times
+   - 15:21:00 @ $22.7000 (Unknown, 0.0%)
+
+Low volume stock (total 93,776 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 15:23:00 @ $22.7000 (Unknown, 0.0%)
+
+Low volume stock (total 93,679 < 500,000 over 60 min, threshold based on vol_ratio 0.67x): 1 times
+   - 15:36:00 @ $22.0300 (Unknown, 0.0%)
+
+Low volume stock (total 93,505 < 500,000 over 60 min, threshold based on vol_ratio 1.18x): 1 times
+   - 15:37:00 @ $22.0200 (Unknown, 0.0%)
+
+Low volume stock (total 92,978 < 500,000 over 60 min, threshold based on vol_ratio 0.97x): 1 times
+   - 15:40:00 @ $21.9400 (Unknown, 0.0%)
+
+Low volume stock (total 91,738 < 500,000 over 60 min, threshold based on vol_ratio 1.00x): 1 times
+   - 15:55:00 @ $22.2300 (Unknown, 0.0%)
+
+Low volume stock (total 91,726 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 15:57:00 @ $22.3100 (Unknown, 0.0%)
+
+Low volume stock (total 93,373 < 400,000 over 60 min, threshold based on vol_ratio 2.44x): 1 times
+   - 16:00:00 @ $21.8600 (Unknown, 0.0%)
+
+Low volume stock (total 92,469 < 500,000 over 60 min, threshold based on vol_ratio 0.22x): 1 times
+   - 16:02:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 91,080 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:04:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 90,568 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $21.8600 (Unknown, 0.0%)
+
+Low volume stock (total 88,335 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 16:08:00 @ $21.8500 (Unknown, 0.0%)
+
+Low volume stock (total 84,748 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:09:00 @ $20.7500 (Unknown, 0.0%)
+
+Low volume stock (total 73,979 < 500,000 over 60 min, threshold based on vol_ratio 0.08x): 1 times
+   - 16:10:00 @ $21.0100 (Unknown, 0.0%)
+
+Low volume stock (total 69,534 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:11:00 @ $20.5000 (Unknown, 0.0%)
+
+Low volume stock (total 66,326 < 500,000 over 60 min, threshold based on vol_ratio 0.09x): 1 times
+   - 16:16:00 @ $21.3600 (Unknown, 0.0%)
+
+Low volume stock (total 65,096 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:26:00 @ $21.3600 (Unknown, 0.0%)
+
+Low volume stock (total 60,950 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 16:41:00 @ $21.3600 (Unknown, 0.0%)
+
+Low volume stock (total 57,810 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:42:00 @ $21.3600 (Unknown, 0.0%)
+
+Low volume stock (total 52,924 < 500,000 over 60 min, threshold based on vol_ratio 0.57x): 1 times
+   - 16:47:00 @ $21.7400 (Unknown, 0.0%)
+
+Low volume stock (total 50,410 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:51:00 @ $21.7000 (Unknown, 0.0%)
+
+Low volume stock (total 49,295 < 500,000 over 60 min, threshold based on vol_ratio 0.17x): 1 times
+   - 17:09:00 @ $21.7000 (Unknown, 0.0%)
+
+Low volume stock (total 48,112 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 18:06:00 @ $21.2700 (Unknown, 0.0%)
+
+Low volume stock (total 47,611 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 18:09:00 @ $20.2400 (Unknown, 0.0%)
+
+Low volume stock (total 47,085 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 18:26:00 @ $20.0800 (Unknown, 0.0%)
+
+Low volume stock (total 44,912 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 18:31:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 43,678 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 18:34:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 42,605 < 450,000 over 60 min, threshold based on vol_ratio 1.60x): 1 times
+   - 18:35:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 42,016 < 450,000 over 60 min, threshold based on vol_ratio 1.92x): 1 times
+   - 18:51:00 @ $19.5000 (Unknown, 0.0%)
+
+Low volume stock (total 40,174 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 18:52:00 @ $19.5000 (Unknown, 0.0%)
+
+Low volume stock (total 37,498 < 500,000 over 60 min, threshold based on vol_ratio 0.79x): 1 times
+   - 18:55:00 @ $19.7900 (Unknown, 0.0%)
+
+Low volume stock (total 36,925 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 19:13:00 @ $19.5100 (Unknown, 0.0%)
+
+Low volume stock (total 34,787 < 500,000 over 60 min, threshold based on vol_ratio 0.11x): 1 times
+   - 19:35:00 @ $19.4800 (Unknown, 0.0%)
+
+Low volume stock (total 34,263 < 500,000 over 60 min, threshold based on vol_ratio 0.08x): 1 times
+   - 19:38:00 @ $19.4800 (Unknown, 0.0%)
+
+Low volume stock (total 33,829 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 19:56:00 @ $20.5000 (Unknown, 0.0%)
+
+Low volume stock (total 33,221 < 500,000 over 60 min, threshold based on vol_ratio 0.18x): 1 times
+   - 04:33:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 32,758 < 500,000 over 60 min, threshold based on vol_ratio 0.06x): 1 times
+   - 04:41:00 @ $21.5000 (Unknown, 0.0%)
+
+Low volume stock (total 32,589 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 04:44:00 @ $21.9000 (Unknown, 0.0%)
+
+Low volume stock (total 30,850 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 04:49:00 @ $22.1000 (Unknown, 0.0%)
+
+Low volume stock (total 29,639 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 04:54:00 @ $22.2900 (Unknown, 0.0%)
+
+Low volume stock (total 28,161 < 500,000 over 60 min, threshold based on vol_ratio 0.09x): 1 times
+   - 04:56:00 @ $21.8600 (Unknown, 0.0%)
+
+Low volume stock (total 25,401 < 450,000 over 60 min, threshold based on vol_ratio 1.98x): 1 times
+   - 05:50:00 @ $21.0500 (Unknown, 0.0%)
+
+Low volume stock (total 23,006 < 300,000 over 60 min, threshold based on vol_ratio 7.86x): 1 times
+   - 08:01:00 @ $21.0500 (Unknown, 0.0%)
+
+Low volume stock (total 20,508 < 500,000 over 60 min, threshold based on vol_ratio 1.22x): 1 times
+   - 08:03:00 @ $20.9800 (Unknown, 0.0%)
+
+Low volume stock (total 19,757 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 08:29:00 @ $22.1500 (Unknown, 0.0%)
+
+Low volume stock (total 19,590 < 500,000 over 60 min, threshold based on vol_ratio 0.16x): 1 times
+   - 08:32:00 @ $22.5900 (Unknown, 0.0%)
+
+Low volume stock (total 19,385 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 08:37:00 @ $22.5900 (Unknown, 0.0%)
+
+Low volume stock (total 18,665 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 08:44:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 17,538 < 300,000 over 60 min, threshold based on vol_ratio 3.17x): 1 times
+   - 09:23:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 16,004 < 300,000 over 60 min, threshold based on vol_ratio 6.34x): 1 times
+   - 09:24:00 @ $22.6000 (Unknown, 0.0%)
+
+Low volume stock (total 15,230 < 500,000 over 60 min, threshold based on vol_ratio 0.05x): 1 times
+   - 09:26:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 15,495 < 300,000 over 60 min, threshold based on vol_ratio 11.52x): 1 times
+   - 09:31:00 @ $21.9900 (Unknown, 0.0%)
+
+Low volume stock (total 15,911 < 300,000 over 60 min, threshold based on vol_ratio 6.66x): 1 times
+   - 09:56:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 17,459 < 300,000 over 60 min, threshold based on vol_ratio 7.61x): 1 times
+   - 10:15:00 @ $23.2000 (Unknown, 0.0%)
+
+Low volume stock (total 16,079 < 450,000 over 60 min, threshold based on vol_ratio 1.92x): 1 times
+   - 11:12:00 @ $21.3100 (Unknown, 0.0%)
+
+Low volume stock (total 16,224 < 450,000 over 60 min, threshold based on vol_ratio 1.93x): 1 times
+   - 11:28:00 @ $21.5000 (Unknown, 0.0%)
+
+Low volume stock (total 16,729 < 300,000 over 60 min, threshold based on vol_ratio 3.59x): 1 times
+   - 12:04:00 @ $20.8500 (Unknown, 0.0%)
+
+Low volume stock (total 17,394 < 400,000 over 60 min, threshold based on vol_ratio 2.67x): 1 times
+   - 12:33:00 @ $20.9000 (Unknown, 0.0%)
+
+Low volume stock (total 18,273 < 300,000 over 60 min, threshold based on vol_ratio 3.37x): 1 times
+   - 15:46:00 @ $20.1200 (Unknown, 0.0%)
+
+Low volume stock (total 17,128 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $20.3100 (Unknown, 0.0%)
+
+Low volume stock (total 16,068 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $20.3100 (Unknown, 0.0%)
+
+Low volume stock (total 15,728 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:28:00 @ $21.0400 (Unknown, 0.0%)
+
+Low volume stock (total 15,193 < 500,000 over 60 min, threshold based on vol_ratio 0.07x): 1 times
+   - 16:49:00 @ $20.2700 (Unknown, 0.0%)
+
+Low volume stock (total 14,292 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:54:00 @ $20.1200 (Unknown, 0.0%)
+
+Low volume stock (total 13,555 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 17:17:00 @ $20.1200 (Unknown, 0.0%)
+
+Low volume stock (total 12,765 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 17:19:00 @ $20.1200 (Unknown, 0.0%)
+
+Low volume stock (total 12,505 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 18:04:00 @ $20.1100 (Unknown, 0.0%)
+
+Low volume stock (total 10,403 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 18:17:00 @ $20.1100 (Unknown, 0.0%)
+
+Low volume stock (total 10,232 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 05:01:00 @ $18.5500 (Unknown, 0.0%)
+
+Low volume stock (total 10,227 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 05:49:00 @ $19.4000 (Unknown, 0.0%)
+
+Low volume stock (total 10,218 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 06:29:00 @ $19.2000 (Unknown, 0.0%)
+
+Low volume stock (total 10,717 < 500,000 over 60 min, threshold based on vol_ratio 1.40x): 1 times
+   - 08:01:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 10,670 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 08:02:00 @ $22.6000 (Unknown, 0.0%)
+
+Low volume stock (total 10,668 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 08:34:00 @ $22.3100 (Unknown, 0.0%)
+
+Low volume stock (total 10,785 < 500,000 over 60 min, threshold based on vol_ratio 0.70x): 1 times
+   - 08:36:00 @ $22.7700 (Unknown, 0.0%)
+
+Low volume stock (total 10,803 < 500,000 over 60 min, threshold based on vol_ratio 0.11x): 1 times
+   - 08:37:00 @ $21.2000 (Unknown, 0.0%)
+
+Low volume stock (total 10,801 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 09:15:00 @ $20.0900 (Unknown, 0.0%)
+
+Low volume stock (total 11,814 < 300,000 over 60 min, threshold based on vol_ratio 11.41x): 1 times
+   - 09:31:00 @ $22.3400 (Unknown, 0.0%)
+
+Low volume stock (total 12,066 < 300,000 over 60 min, threshold based on vol_ratio 4.10x): 1 times
+   - 09:36:00 @ $22.3400 (Unknown, 0.0%)
+
+Low volume stock (total 12,787 < 300,000 over 60 min, threshold based on vol_ratio 4.88x): 1 times
+   - 09:37:00 @ $22.9800 (Unknown, 0.0%)
+
+Low volume stock (total 13,320 < 300,000 over 60 min, threshold based on vol_ratio 3.29x): 1 times
+   - 09:38:00 @ $22.9800 (Unknown, 0.0%)
+
+Low volume stock (total 13,470 < 500,000 over 60 min, threshold based on vol_ratio 0.85x): 1 times
+   - 09:40:00 @ $21.8000 (Unknown, 0.0%)
+
+Low volume stock (total 14,471 < 300,000 over 60 min, threshold based on vol_ratio 4.29x): 1 times
+   - 09:41:00 @ $23.5000 (Unknown, 0.0%)
+
+Low volume stock (total 15,191 < 400,000 over 60 min, threshold based on vol_ratio 2.69x): 1 times
+   - 09:45:00 @ $22.8300 (Unknown, 0.0%)
+
+Low volume stock (total 15,784 < 400,000 over 60 min, threshold based on vol_ratio 2.52x): 1 times
+   - 09:47:00 @ $22.9000 (Unknown, 0.0%)
+
+Low volume stock (total 17,970 < 300,000 over 60 min, threshold based on vol_ratio 5.27x): 1 times
+   - 09:49:00 @ $24.0000 (Unknown, 0.0%)
+
+Low volume stock (total 18,497 < 500,000 over 60 min, threshold based on vol_ratio 1.33x): 1 times
+   - 09:50:00 @ $24.3900 (Unknown, 0.0%)
+
+Low volume stock (total 18,668 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 09:52:00 @ $25.0000 (Unknown, 0.0%)
+
+Low volume stock (total 19,106 < 500,000 over 60 min, threshold based on vol_ratio 0.91x): 1 times
+   - 09:56:00 @ $23.9100 (Unknown, 0.0%)
+
+Low volume stock (total 21,049 < 300,000 over 60 min, threshold based on vol_ratio 3.41x): 1 times
+   - 10:37:00 @ $23.9100 (Unknown, 0.0%)
+
+Low volume stock (total 21,423 < 500,000 over 60 min, threshold based on vol_ratio 0.63x): 1 times
+   - 10:57:00 @ $23.8900 (Unknown, 0.0%)
+
+Low volume stock (total 21,534 < 500,000 over 60 min, threshold based on vol_ratio 0.20x): 1 times
+   - 11:01:00 @ $23.4200 (Unknown, 0.0%)
+
+Low volume stock (total 21,920 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 11:05:00 @ $23.2000 (Unknown, 0.0%)
+
+Low volume stock (total 23,254 < 400,000 over 60 min, threshold based on vol_ratio 2.01x): 1 times
+   - 11:19:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 23,707 < 500,000 over 60 min, threshold based on vol_ratio 0.68x): 1 times
+   - 11:32:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 24,037 < 500,000 over 60 min, threshold based on vol_ratio 0.48x): 1 times
+   - 11:40:00 @ $22.1100 (Unknown, 0.0%)
+
+Low volume stock (total 25,848 < 400,000 over 60 min, threshold based on vol_ratio 2.31x): 1 times
+   - 15:38:00 @ $22.1300 (Unknown, 0.0%)
+
+Low volume stock (total 26,092 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 15:43:00 @ $21.9100 (Unknown, 0.0%)
+
+Low volume stock (total 26,658 < 500,000 over 60 min, threshold based on vol_ratio 0.75x): 1 times
+   - 15:54:00 @ $21.6000 (Unknown, 0.0%)
+
+Low volume stock (total 26,661 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $21.8200 (Unknown, 0.0%)
+
+Low volume stock (total 26,619 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $21.8200 (Unknown, 0.0%)
+
+Low volume stock (total 26,398 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 16:41:00 @ $21.8200 (Unknown, 0.0%)
+
+Low volume stock (total 26,355 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:49:00 @ $21.7000 (Unknown, 0.0%)
+
+Low volume stock (total 26,375 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 17:13:00 @ $22.2500 (Unknown, 0.0%)
+
+Low volume stock (total 26,371 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 18:48:00 @ $22.1400 (Unknown, 0.0%)
+
+Low volume stock (total 26,377 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 19:54:00 @ $22.1700 (Unknown, 0.0%)
+
+Low volume stock (total 26,387 < 500,000 over 60 min, threshold based on vol_ratio 0.07x): 1 times
+   - 08:01:00 @ $21.6000 (Unknown, 0.0%)
+
+Low volume stock (total 26,300 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 09:25:00 @ $21.6000 (Unknown, 0.0%)
+
+Low volume stock (total 26,059 < 500,000 over 60 min, threshold based on vol_ratio 0.06x): 1 times
+   - 09:27:00 @ $21.6000 (Unknown, 0.0%)
+
+Low volume stock (total 26,110 < 500,000 over 60 min, threshold based on vol_ratio 0.18x): 1 times
+   - 09:29:00 @ $21.4200 (Unknown, 0.0%)
+
+Low volume stock (total 25,142 < 500,000 over 60 min, threshold based on vol_ratio 0.41x): 1 times
+   - 10:40:00 @ $21.0100 (Unknown, 0.0%)
+
+Low volume stock (total 24,577 < 500,000 over 60 min, threshold based on vol_ratio 1.27x): 1 times
+   - 10:49:00 @ $21.0100 (Unknown, 0.0%)
+
+Low volume stock (total 23,828 < 300,000 over 60 min, threshold based on vol_ratio 3.03x): 1 times
+   - 10:56:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 23,596 < 500,000 over 60 min, threshold based on vol_ratio 0.93x): 1 times
+   - 10:57:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 23,072 < 500,000 over 60 min, threshold based on vol_ratio 0.05x): 1 times
+   - 16:05:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 21,860 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:07:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 20,822 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:11:00 @ $21.0500 (Unknown, 0.0%)
+
+Low volume stock (total 19,264 < 500,000 over 60 min, threshold based on vol_ratio 0.16x): 1 times
+   - 16:16:00 @ $22.4800 (Unknown, 0.0%)
+
+Low volume stock (total 19,276 < 500,000 over 60 min, threshold based on vol_ratio 0.18x): 1 times
+   - 16:17:00 @ $21.0400 (Unknown, 0.0%)
+
+Low volume stock (total 19,255 < 500,000 over 60 min, threshold based on vol_ratio 0.11x): 1 times
+   - 08:47:00 @ $22.4800 (Unknown, 0.0%)
+
+Low volume stock (total 19,432 < 450,000 over 60 min, threshold based on vol_ratio 1.70x): 1 times
+   - 09:31:00 @ $22.4100 (Unknown, 0.0%)
+
+Low volume stock (total 20,743 < 300,000 over 60 min, threshold based on vol_ratio 7.77x): 1 times
+   - 09:40:00 @ $21.2000 (Unknown, 0.0%)
+
+Low volume stock (total 21,436 < 300,000 over 60 min, threshold based on vol_ratio 3.40x): 1 times
+   - 10:00:00 @ $20.9400 (Unknown, 0.0%)
+
+Low volume stock (total 22,859 < 300,000 over 60 min, threshold based on vol_ratio 5.19x): 1 times
+   - 10:02:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 23,083 < 500,000 over 60 min, threshold based on vol_ratio 0.81x): 1 times
+   - 10:03:00 @ $19.9500 (Unknown, 0.0%)
+
+Low volume stock (total 23,460 < 500,000 over 60 min, threshold based on vol_ratio 1.24x): 1 times
+   - 10:36:00 @ $19.9600 (Unknown, 0.0%)
+
+Low volume stock (total 23,707 < 500,000 over 60 min, threshold based on vol_ratio 0.83x): 1 times
+   - 10:59:00 @ $21.9600 (Unknown, 0.0%)
+
+Low volume stock (total 27,751 < 300,000 over 60 min, threshold based on vol_ratio 7.85x): 1 times
+   - 14:35:00 @ $22.2800 (Unknown, 0.0%)
+
+Low volume stock (total 28,027 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 14:51:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 27,527 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:03:00 @ $20.0000 (Unknown, 0.0%)
+
+Low volume stock (total 27,366 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:36:00 @ $20.4000 (Unknown, 0.0%)
+
+Low volume stock (total 27,348 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 08:45:00 @ $20.4000 (Unknown, 0.0%)
+
+Low volume stock (total 27,458 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 15:59:00 @ $20.4600 (Unknown, 0.0%)
+
+Low volume stock (total 26,445 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $19.9200 (Unknown, 0.0%)
+
+Low volume stock (total 25,987 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $19.9200 (Unknown, 0.0%)
+
+Low volume stock (total 25,274 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 16:27:00 @ $19.5300 (Unknown, 0.0%)
+
+Low volume stock (total 24,694 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:29:00 @ $20.3000 (Unknown, 0.0%)
+
+Low volume stock (total 24,540 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:40:00 @ $20.0100 (Unknown, 0.0%)
+
+Low volume stock (total 23,545 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 18:08:00 @ $20.3100 (Unknown, 0.0%)
+
+Low volume stock (total 22,823 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 08:27:00 @ $19.9500 (Unknown, 0.0%)
+
+Low volume stock (total 22,047 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 08:28:00 @ $20.3100 (Unknown, 0.0%)
+
+Low volume stock (total 22,805 < 300,000 over 60 min, threshold based on vol_ratio 7.13x): 1 times
+   - 11:24:00 @ $19.0000 (Unknown, 0.0%)
+
+Low volume stock (total 25,148 < 300,000 over 60 min, threshold based on vol_ratio 5.34x): 1 times
+   - 12:13:00 @ $19.6000 (Unknown, 0.0%)
+
+Low volume stock (total 25,318 < 500,000 over 60 min, threshold based on vol_ratio 0.75x): 1 times
+   - 13:24:00 @ $19.7500 (Unknown, 0.0%)
+
+Low volume stock (total 28,703 < 300,000 over 60 min, threshold based on vol_ratio 5.24x): 1 times
+   - 15:01:00 @ $19.1100 (Unknown, 0.0%)
+
+Low volume stock (total 26,739 < 500,000 over 60 min, threshold based on vol_ratio 0.02x): 1 times
+   - 16:02:00 @ $19.4000 (Unknown, 0.0%)
+
+Low volume stock (total 26,362 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $19.0000 (Unknown, 0.0%)
+
+Low volume stock (total 26,249 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $19.0000 (Unknown, 0.0%)
+
+Low volume stock (total 25,861 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:41:00 @ $19.5000 (Unknown, 0.0%)
+
+Low volume stock (total 25,312 < 500,000 over 60 min, threshold based on vol_ratio 1.42x): 1 times
+   - 09:56:00 @ $23.0000 (Unknown, 0.0%)
+
+Low volume stock (total 26,859 < 300,000 over 60 min, threshold based on vol_ratio 3.07x): 1 times
+   - 10:12:00 @ $23.2700 (Unknown, 0.0%)
+
+Low volume stock (total 28,709 < 400,000 over 60 min, threshold based on vol_ratio 2.86x): 1 times
+   - 10:46:00 @ $21.7500 (Unknown, 0.0%)
+
+Low volume stock (total 29,068 < 400,000 over 60 min, threshold based on vol_ratio 2.51x): 1 times
+   - 12:11:00 @ $21.6500 (Unknown, 0.0%)
+
+Low volume stock (total 29,969 < 500,000 over 60 min, threshold based on vol_ratio 1.24x): 1 times
+   - 15:48:00 @ $21.9400 (Unknown, 0.0%)
+
+Low volume stock (total 29,984 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 15:49:00 @ $23.1700 (Unknown, 0.0%)
+
+Low volume stock (total 29,983 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 29,984 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:08:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 29,917 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 29,917 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:43:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 29,901 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 09:14:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 29,866 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 09:30:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 29,983 < 500,000 over 60 min, threshold based on vol_ratio 0.19x): 1 times
+   - 10:09:00 @ $21.0800 (Unknown, 0.0%)
+
+Low volume stock (total 30,081 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 10:10:00 @ $21.9000 (Unknown, 0.0%)
+
+Low volume stock (total 32,045 < 300,000 over 60 min, threshold based on vol_ratio 3.61x): 1 times
+   - 10:51:00 @ $21.2000 (Unknown, 0.0%)
+
+Low volume stock (total 32,133 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 10:53:00 @ $21.1500 (Unknown, 0.0%)
+
+Low volume stock (total 33,138 < 400,000 over 60 min, threshold based on vol_ratio 2.16x): 1 times
+   - 12:18:00 @ $20.5600 (Unknown, 0.0%)
+
+Low volume stock (total 34,745 < 300,000 over 60 min, threshold based on vol_ratio 3.37x): 1 times
+   - 12:37:00 @ $21.5400 (Unknown, 0.0%)
+
+Low volume stock (total 38,768 < 300,000 over 60 min, threshold based on vol_ratio 4.54x): 1 times
+   - 13:18:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 39,590 < 500,000 over 60 min, threshold based on vol_ratio 0.95x): 1 times
+   - 13:20:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 48,593 < 300,000 over 60 min, threshold based on vol_ratio 7.36x): 1 times
+   - 14:38:00 @ $20.4400 (Unknown, 0.0%)
+
+Low volume stock (total 50,017 < 500,000 over 60 min, threshold based on vol_ratio 1.20x): 1 times
+   - 15:04:00 @ $20.1600 (Unknown, 0.0%)
+
+Low volume stock (total 51,866 < 450,000 over 60 min, threshold based on vol_ratio 1.53x): 1 times
+   - 15:39:00 @ $20.2400 (Unknown, 0.0%)
+
+Low volume stock (total 52,088 < 500,000 over 60 min, threshold based on vol_ratio 0.20x): 1 times
+   - 15:54:00 @ $20.2400 (Unknown, 0.0%)
+
+Low volume stock (total 52,089 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $20.4000 (Unknown, 0.0%)
+
+Low volume stock (total 52,090 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $20.4000 (Unknown, 0.0%)
+
+Low volume stock (total 52,091 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:21:00 @ $20.2500 (Unknown, 0.0%)
+
+Low volume stock (total 51,916 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $20.3900 (Unknown, 0.0%)
+
+Low volume stock (total 50,602 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $20.3900 (Unknown, 0.0%)
+
+Low volume stock (total 49,958 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 16:13:00 @ $20.7900 (Unknown, 0.0%)
+
+Low volume stock (total 48,698 < 500,000 over 60 min, threshold based on vol_ratio 0.14x): 1 times
+   - 19:45:00 @ $20.7500 (Unknown, 0.0%)
+
+Low volume stock (total 48,469 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 08:59:00 @ $20.3400 (Unknown, 0.0%)
+
+Low volume stock (total 48,214 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 10:35:00 @ $21.4000 (Unknown, 0.0%)
+
+Low volume stock (total 52,684 < 300,000 over 60 min, threshold based on vol_ratio 3.27x): 1 times
+   - 16:00:00 @ $20.8300 (Unknown, 0.0%)
+
+Low volume stock (total 48,642 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $20.8300 (Unknown, 0.0%)
+
+Low volume stock (total 48,367 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $20.8300 (Unknown, 0.0%)
+
+Low volume stock (total 48,473 < 500,000 over 60 min, threshold based on vol_ratio 0.08x): 1 times
+   - 09:34:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 49,770 < 500,000 over 60 min, threshold based on vol_ratio 1.07x): 1 times
+   - 10:32:00 @ $21.6000 (Unknown, 0.0%)
+
+Low volume stock (total 53,692 < 300,000 over 60 min, threshold based on vol_ratio 3.30x): 1 times
+   - 11:42:00 @ $22.3800 (Unknown, 0.0%)
+
+Low volume stock (total 56,238 < 450,000 over 60 min, threshold based on vol_ratio 2.00x): 1 times
+   - 15:58:00 @ $21.3500 (Unknown, 0.0%)
+
+Low volume stock (total 56,238 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $21.3500 (Unknown, 0.0%)
+
+Low volume stock (total 56,125 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $21.3500 (Unknown, 0.0%)
+
+Low volume stock (total 56,163 < 500,000 over 60 min, threshold based on vol_ratio 0.06x): 1 times
+   - 08:01:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 56,163 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 09:15:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 56,695 < 500,000 over 60 min, threshold based on vol_ratio 0.80x): 1 times
+   - 09:46:00 @ $22.8500 (Unknown, 0.0%)
+
+Low volume stock (total 57,765 < 500,000 over 60 min, threshold based on vol_ratio 1.47x): 1 times
+   - 10:01:00 @ $22.6400 (Unknown, 0.0%)
+
+Low volume stock (total 59,811 < 400,000 over 60 min, threshold based on vol_ratio 2.46x): 1 times
+   - 13:07:00 @ $22.1800 (Unknown, 0.0%)
+
+Low volume stock (total 60,014 < 500,000 over 60 min, threshold based on vol_ratio 0.25x): 1 times
+   - 13:28:00 @ $21.7300 (Unknown, 0.0%)
+
+Low volume stock (total 60,213 < 500,000 over 60 min, threshold based on vol_ratio 0.23x): 1 times
+   - 13:29:00 @ $21.7100 (Unknown, 0.0%)
+
+Low volume stock (total 60,809 < 500,000 over 60 min, threshold based on vol_ratio 0.68x): 1 times
+   - 14:30:00 @ $21.0000 (Unknown, 0.0%)
+
+Low volume stock (total 58,194 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 15:00:00 @ $21.1600 (Unknown, 0.0%)
+
+Low volume stock (total 55,356 < 500,000 over 60 min, threshold based on vol_ratio 0.11x): 1 times
+   - 15:01:00 @ $21.1600 (Unknown, 0.0%)
+
+Low volume stock (total 55,204 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 15:02:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 52,577 < 450,000 over 60 min, threshold based on vol_ratio 1.65x): 1 times
+   - 15:40:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 52,747 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 16:02:00 @ $21.3000 (Unknown, 0.0%)
+
+Low volume stock (total 52,751 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $21.2900 (Unknown, 0.0%)
+
+Low volume stock (total 52,064 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 09:48:00 @ $23.3500 (Unknown, 0.0%)
+
+Low volume stock (total 50,554 < 500,000 over 60 min, threshold based on vol_ratio 1.34x): 1 times
+   - 09:51:00 @ $21.5800 (Unknown, 0.0%)
+
+Low volume stock (total 53,338 < 300,000 over 60 min, threshold based on vol_ratio 8.03x): 1 times
+   - 12:49:00 @ $21.2900 (Unknown, 0.0%)
+
+Low volume stock (total 52,655 < 400,000 over 60 min, threshold based on vol_ratio 2.15x): 1 times
+   - 13:04:00 @ $21.2900 (Unknown, 0.0%)
+
+Low volume stock (total 53,486 < 400,000 over 60 min, threshold based on vol_ratio 2.50x): 1 times
+   - 13:50:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 55,487 < 400,000 over 60 min, threshold based on vol_ratio 2.81x): 1 times
+   - 14:23:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 56,303 < 500,000 over 60 min, threshold based on vol_ratio 0.88x): 1 times
+   - 14:24:00 @ $22.3000 (Unknown, 0.0%)
+
+Low volume stock (total 57,949 < 450,000 over 60 min, threshold based on vol_ratio 1.72x): 1 times
+   - 15:38:00 @ $22.0300 (Unknown, 0.0%)
+
+Low volume stock (total 57,951 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $21.5300 (Unknown, 0.0%)
+
+Low volume stock (total 57,948 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $21.5300 (Unknown, 0.0%)
+
+Low volume stock (total 59,958 < 400,000 over 60 min, threshold based on vol_ratio 2.14x): 1 times
+   - 09:41:00 @ $21.9000 (Unknown, 0.0%)
+
+Low volume stock (total 61,081 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 10:37:00 @ $21.5500 (Unknown, 0.0%)
+
+Low volume stock (total 62,101 < 500,000 over 60 min, threshold based on vol_ratio 1.02x): 1 times
+   - 10:38:00 @ $21.2500 (Unknown, 0.0%)
+
+Low volume stock (total 62,836 < 500,000 over 60 min, threshold based on vol_ratio 0.72x): 1 times
+   - 10:39:00 @ $21.2500 (Unknown, 0.0%)
+
+Low volume stock (total 63,688 < 500,000 over 60 min, threshold based on vol_ratio 0.91x): 1 times
+   - 10:44:00 @ $21.9000 (Unknown, 0.0%)
+
+Low volume stock (total 64,173 < 500,000 over 60 min, threshold based on vol_ratio 0.58x): 1 times
+   - 11:05:00 @ $21.7700 (Unknown, 0.0%)
+
+Low volume stock (total 63,878 < 450,000 over 60 min, threshold based on vol_ratio 1.54x): 1 times
+   - 11:52:00 @ $21.7800 (Unknown, 0.0%)
+
+Low volume stock (total 64,017 < 500,000 over 60 min, threshold based on vol_ratio 0.30x): 1 times
+   - 11:56:00 @ $21.7000 (Unknown, 0.0%)
+
+Low volume stock (total 63,359 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 11:57:00 @ $21.7000 (Unknown, 0.0%)
+
+Low volume stock (total 66,616 < 300,000 over 60 min, threshold based on vol_ratio 4.00x): 1 times
+   - 11:59:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 62,703 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 12:18:00 @ $22.2500 (Unknown, 0.0%)
+
+Low volume stock (total 62,542 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 13:00:00 @ $22.2400 (Unknown, 0.0%)
+
+Low volume stock (total 53,540 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 13:05:00 @ $21.3200 (Unknown, 0.0%)
+
+Low volume stock (total 52,116 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 13:11:00 @ $21.3200 (Unknown, 0.0%)
+
+Low volume stock (total 50,347 < 500,000 over 60 min, threshold based on vol_ratio 0.09x): 1 times
+   - 08:01:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 50,108 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 08:26:00 @ $22.2000 (Unknown, 0.0%)
+
+Low volume stock (total 50,506 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 10:08:00 @ $22.0000 (Unknown, 0.0%)
+
+Low volume stock (total 50,981 < 500,000 over 60 min, threshold based on vol_ratio 0.56x): 1 times
+   - 10:09:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 55,728 < 300,000 over 60 min, threshold based on vol_ratio 4.35x): 1 times
+   - 12:59:00 @ $22.5000 (Unknown, 0.0%)
+
+Low volume stock (total 56,525 < 500,000 over 60 min, threshold based on vol_ratio 0.71x): 1 times
+   - 13:00:00 @ $22.4900 (Unknown, 0.0%)
+
+Low volume stock (total 56,525 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $21.6100 (Unknown, 0.0%)
+
+Low volume stock (total 56,476 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $21.6100 (Unknown, 0.0%)
+
+Low volume stock (total 56,545 < 500,000 over 60 min, threshold based on vol_ratio 0.25x): 1 times
+   - 09:41:00 @ $21.6200 (Unknown, 0.0%)
+
+Low volume stock (total 57,994 < 500,000 over 60 min, threshold based on vol_ratio 1.49x): 1 times
+   - 10:34:00 @ $21.8700 (Unknown, 0.0%)
+
+Low volume stock (total 57,872 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $21.8800 (Unknown, 0.0%)
+
+Low volume stock (total 53,748 < 500,000 over 60 min, threshold based on vol_ratio 0.74x): 1 times
+   - 10:54:00 @ $23.2000 (Unknown, 0.0%)
+
+Low volume stock (total 54,412 < 500,000 over 60 min, threshold based on vol_ratio 0.94x): 1 times
+   - 11:01:00 @ $24.5500 (Unknown, 0.0%)
+
+Low volume stock (total 53,648 < 500,000 over 60 min, threshold based on vol_ratio 0.96x): 1 times
+   - 11:02:00 @ $24.4000 (Unknown, 0.0%)
+
+Low volume stock (total 50,549 < 500,000 over 60 min, threshold based on vol_ratio 1.42x): 1 times
+   - 11:09:00 @ $24.1000 (Unknown, 0.0%)
+
+Low volume stock (total 48,267 < 500,000 over 60 min, threshold based on vol_ratio 0.47x): 1 times
+   - 11:13:00 @ $24.0100 (Unknown, 0.0%)
+
+Low volume stock (total 48,384 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 11:30:00 @ $24.0100 (Unknown, 0.0%)
+
+Low volume stock (total 49,084 < 500,000 over 60 min, threshold based on vol_ratio 1.16x): 1 times
+   - 11:31:00 @ $24.1900 (Unknown, 0.0%)
+
+Low volume stock (total 49,907 < 500,000 over 60 min, threshold based on vol_ratio 1.35x): 1 times
+   - 11:35:00 @ $24.5100 (Unknown, 0.0%)
+
+Low volume stock (total 50,682 < 500,000 over 60 min, threshold based on vol_ratio 1.14x): 1 times
+   - 11:36:00 @ $24.4000 (Unknown, 0.0%)
+
+Low volume stock (total 50,329 < 500,000 over 60 min, threshold based on vol_ratio 0.28x): 1 times
+   - 11:38:00 @ $24.3100 (Unknown, 0.0%)
+
+Low volume stock (total 49,593 < 500,000 over 60 min, threshold based on vol_ratio 0.51x): 1 times
+   - 11:41:00 @ $24.5000 (Unknown, 0.0%)
+
+Low volume stock (total 48,220 < 500,000 over 60 min, threshold based on vol_ratio 1.47x): 1 times
+   - 14:42:00 @ $23.6000 (Unknown, 0.0%)
+
+Low volume stock (total 48,016 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $24.4400 (Unknown, 0.0%)
+
+Low volume stock (total 47,818 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $24.4400 (Unknown, 0.0%)
+
+Low volume stock (total 47,222 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 19:29:00 @ $24.4400 (Unknown, 0.0%)
+
+Low volume stock (total 46,893 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 08:01:00 @ $24.4400 (Unknown, 0.0%)
+
+Low volume stock (total 46,798 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 08:22:00 @ $24.9200 (Unknown, 0.0%)
+
+Low volume stock (total 46,542 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 08:26:00 @ $24.9200 (Unknown, 0.0%)
+
+Low volume stock (total 45,445 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 11:03:00 @ $23.5200 (Unknown, 0.0%)
+
+Low volume stock (total 46,801 < 300,000 over 60 min, threshold based on vol_ratio 3.68x): 1 times
+   - 15:55:00 @ $22.1500 (Unknown, 0.0%)
+
+Low volume stock (total 46,797 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $22.0100 (Unknown, 0.0%)
+
+Low volume stock (total 46,797 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $22.0100 (Unknown, 0.0%)
+
+Low volume stock (total 48,472 < 300,000 over 60 min, threshold based on vol_ratio 4.14x): 1 times
+   - 16:00:00 @ $22.7100 (Unknown, 0.0%)
+
+Low volume stock (total 48,374 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $22.7100 (Unknown, 0.0%)
+
+Low volume stock (total 47,880 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:11:00 @ $22.7100 (Unknown, 0.0%)
+
+Low volume stock (total 42,915 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 19:45:00 @ $22.7000 (Unknown, 0.0%)
+
+Low volume stock (total 41,443 < 500,000 over 60 min, threshold based on vol_ratio 0.06x): 1 times
+   - 08:01:00 @ $23.0000 (Unknown, 0.0%)
+
+Low volume stock (total 40,086 < 400,000 over 60 min, threshold based on vol_ratio 2.08x): 1 times
+   - 09:46:00 @ $23.1700 (Unknown, 0.0%)
+
+Low volume stock (total 37,623 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 09:48:00 @ $22.2100 (Unknown, 0.0%)
+
+Low volume stock (total 39,774 < 300,000 over 60 min, threshold based on vol_ratio 7.34x): 1 times
+   - 10:59:00 @ $22.2100 (Unknown, 0.0%)
+
+Low volume stock (total 39,961 < 300,000 over 60 min, threshold based on vol_ratio 3.83x): 1 times
+   - 11:10:00 @ $23.3000 (Unknown, 0.0%)
+
+Low volume stock (total 42,304 < 300,000 over 60 min, threshold based on vol_ratio 4.17x): 1 times
+   - 13:23:00 @ $22.6500 (Unknown, 0.0%)
+
+Low volume stock (total 42,514 < 500,000 over 60 min, threshold based on vol_ratio 0.37x): 1 times
+   - 13:33:00 @ $22.7300 (Unknown, 0.0%)
+
+Low volume stock (total 41,288 < 500,000 over 60 min, threshold based on vol_ratio 1.28x): 1 times
+   - 15:51:00 @ $23.0000 (Unknown, 0.0%)
+
+Low volume stock (total 40,158 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:05:00 @ $22.8500 (Unknown, 0.0%)
+
+Low volume stock (total 39,139 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $22.8500 (Unknown, 0.0%)
+
+Low volume stock (total 39,476 < 450,000 over 60 min, threshold based on vol_ratio 1.61x): 1 times
+   - 10:32:00 @ $24.4700 (Unknown, 0.0%)
+
+Low volume stock (total 39,551 < 500,000 over 60 min, threshold based on vol_ratio 1.46x): 1 times
+   - 10:43:00 @ $23.9900 (Unknown, 0.0%)
+
+Low volume stock (total 39,095 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 10:45:00 @ $23.8000 (Unknown, 0.0%)
+
+Low volume stock (total 37,804 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 10:51:00 @ $23.8000 (Unknown, 0.0%)
+
+Low volume stock (total 37,626 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 10:58:00 @ $24.0000 (Unknown, 0.0%)
+
+Low volume stock (total 37,870 < 500,000 over 60 min, threshold based on vol_ratio 1.33x): 1 times
+   - 13:25:00 @ $23.9800 (Unknown, 0.0%)
+
+Low volume stock (total 32,036 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $24.3600 (Unknown, 0.0%)
+
+Low volume stock (total 31,678 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $24.3600 (Unknown, 0.0%)
+
+Low volume stock (total 33,035 < 400,000 over 60 min, threshold based on vol_ratio 2.75x): 1 times
+   - 13:10:00 @ $24.8800 (Unknown, 0.0%)
+
+Low volume stock (total 33,394 < 500,000 over 60 min, threshold based on vol_ratio 0.48x): 1 times
+   - 14:38:00 @ $24.2500 (Unknown, 0.0%)
+
+Low volume stock (total 33,396 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:05:00 @ $23.5000 (Unknown, 0.0%)
+
+Low volume stock (total 33,298 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $23.5000 (Unknown, 0.0%)
+
+Low volume stock (total 35,898 < 300,000 over 60 min, threshold based on vol_ratio 3.06x): 1 times
+   - 12:08:00 @ $25.5200 (Unknown, 0.0%)
+
+Low volume stock (total 35,817 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 12:32:00 @ $25.6800 (Unknown, 0.0%)
+
+Low volume stock (total 36,342 < 500,000 over 60 min, threshold based on vol_ratio 1.48x): 1 times
+   - 12:50:00 @ $27.5000 (Unknown, 0.0%)
+
+Low volume stock (total 31,744 < 500,000 over 60 min, threshold based on vol_ratio 0.28x): 1 times
+   - 12:52:00 @ $27.4800 (Unknown, 0.0%)
+
+Low volume stock (total 31,562 < 500,000 over 60 min, threshold based on vol_ratio 1.05x): 1 times
+   - 12:54:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 31,760 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 12:56:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 32,259 < 500,000 over 60 min, threshold based on vol_ratio 0.86x): 1 times
+   - 12:57:00 @ $28.5000 (Unknown, 0.0%)
+
+Low volume stock (total 32,625 < 500,000 over 60 min, threshold based on vol_ratio 0.99x): 1 times
+   - 12:58:00 @ $29.9800 (Unknown, 0.0%)
+
+Low volume stock (total 32,151 < 450,000 over 60 min, threshold based on vol_ratio 1.61x): 1 times
+   - 13:02:00 @ $30.3900 (Unknown, 0.0%)
+
+Low volume stock (total 32,707 < 500,000 over 60 min, threshold based on vol_ratio 0.96x): 1 times
+   - 13:03:00 @ $30.5000 (Unknown, 0.0%)
+
+Low volume stock (total 33,019 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 13:05:00 @ $30.4000 (Unknown, 0.0%)
+
+Low volume stock (total 33,594 < 500,000 over 60 min, threshold based on vol_ratio 0.97x): 1 times
+   - 13:06:00 @ $29.0700 (Unknown, 0.0%)
+
+Low volume stock (total 33,296 < 500,000 over 60 min, threshold based on vol_ratio 0.51x): 1 times
+   - 13:09:00 @ $29.9800 (Unknown, 0.0%)
+
+Low volume stock (total 32,725 < 500,000 over 60 min, threshold based on vol_ratio 0.35x): 1 times
+   - 13:11:00 @ $29.9800 (Unknown, 0.0%)
+
+Low volume stock (total 32,622 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 13:13:00 @ $30.4900 (Unknown, 0.0%)
+
+Low volume stock (total 32,107 < 500,000 over 60 min, threshold based on vol_ratio 0.51x): 1 times
+   - 13:14:00 @ $30.0500 (Unknown, 0.0%)
+
+Low volume stock (total 32,051 < 500,000 over 60 min, threshold based on vol_ratio 0.41x): 1 times
+   - 13:18:00 @ $30.2500 (Unknown, 0.0%)
+
+Low volume stock (total 32,507 < 500,000 over 60 min, threshold based on vol_ratio 1.10x): 1 times
+   - 13:19:00 @ $30.3900 (Unknown, 0.0%)
+
+Low volume stock (total 31,915 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 13:20:00 @ $30.2800 (Unknown, 0.0%)
+
+Low volume stock (total 31,259 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 13:21:00 @ $30.4000 (Unknown, 0.0%)
+
+Low volume stock (total 31,370 < 450,000 over 60 min, threshold based on vol_ratio 1.96x): 1 times
+   - 13:31:00 @ $30.4900 (Unknown, 0.0%)
+
+Low volume stock (total 32,795 < 300,000 over 60 min, threshold based on vol_ratio 3.11x): 1 times
+   - 13:35:00 @ $29.1000 (Unknown, 0.0%)
+
+Low volume stock (total 32,620 < 500,000 over 60 min, threshold based on vol_ratio 0.34x): 1 times
+   - 13:36:00 @ $29.1000 (Unknown, 0.0%)
+
+Low volume stock (total 32,204 < 500,000 over 60 min, threshold based on vol_ratio 0.54x): 1 times
+   - 13:38:00 @ $29.5000 (Unknown, 0.0%)
+
+Low volume stock (total 32,567 < 500,000 over 60 min, threshold based on vol_ratio 0.79x): 1 times
+   - 14:18:00 @ $29.8000 (Unknown, 0.0%)
+
+Low volume stock (total 32,691 < 500,000 over 60 min, threshold based on vol_ratio 0.27x): 1 times
+   - 14:34:00 @ $29.8000 (Unknown, 0.0%)
+
+Low volume stock (total 33,980 < 400,000 over 60 min, threshold based on vol_ratio 2.56x): 1 times
+   - 15:04:00 @ $29.2000 (Unknown, 0.0%)
+
+Low volume stock (total 35,124 < 400,000 over 60 min, threshold based on vol_ratio 2.18x): 1 times
+   - 15:12:00 @ $28.9000 (Unknown, 0.0%)
+
+Low volume stock (total 35,526 < 500,000 over 60 min, threshold based on vol_ratio 0.81x): 1 times
+   - 15:13:00 @ $28.9000 (Unknown, 0.0%)
+
+Low volume stock (total 36,224 < 500,000 over 60 min, threshold based on vol_ratio 1.37x): 1 times
+   - 15:15:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 36,277 < 500,000 over 60 min, threshold based on vol_ratio 0.30x): 1 times
+   - 15:16:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 35,013 < 500,000 over 60 min, threshold based on vol_ratio 0.56x): 1 times
+   - 15:20:00 @ $27.5000 (Unknown, 0.0%)
+
+Low volume stock (total 35,777 < 450,000 over 60 min, threshold based on vol_ratio 1.50x): 1 times
+   - 15:24:00 @ $26.8000 (Unknown, 0.0%)
+
+Low volume stock (total 36,001 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 15:25:00 @ $26.5000 (Unknown, 0.0%)
+
+Low volume stock (total 34,715 < 500,000 over 60 min, threshold based on vol_ratio 0.77x): 1 times
+   - 15:28:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 34,816 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 15:30:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 36,175 < 400,000 over 60 min, threshold based on vol_ratio 2.44x): 1 times
+   - 15:42:00 @ $27.3000 (Unknown, 0.0%)
+
+Low volume stock (total 36,476 < 500,000 over 60 min, threshold based on vol_ratio 0.56x): 1 times
+   - 15:45:00 @ $27.0000 (Unknown, 0.0%)
+
+Low volume stock (total 37,122 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 15:48:00 @ $26.6100 (Unknown, 0.0%)
+
+Low volume stock (total 36,913 < 500,000 over 60 min, threshold based on vol_ratio 0.71x): 1 times
+   - 15:50:00 @ $26.2500 (Unknown, 0.0%)
+
+Low volume stock (total 37,592 < 500,000 over 60 min, threshold based on vol_ratio 1.39x): 1 times
+   - 15:52:00 @ $25.9000 (Unknown, 0.0%)
+
+Low volume stock (total 35,123 < 500,000 over 60 min, threshold based on vol_ratio 0.96x): 1 times
+   - 15:53:00 @ $25.6600 (Unknown, 0.0%)
+
+Low volume stock (total 33,486 < 500,000 over 60 min, threshold based on vol_ratio 0.38x): 1 times
+   - 15:54:00 @ $25.6800 (Unknown, 0.0%)
+
+Low volume stock (total 32,427 < 400,000 over 60 min, threshold based on vol_ratio 2.24x): 1 times
+   - 15:55:00 @ $24.5000 (Unknown, 0.0%)
+
+Low volume stock (total 32,600 < 500,000 over 60 min, threshold based on vol_ratio 0.67x): 1 times
+   - 15:56:00 @ $24.8000 (Unknown, 0.0%)
+
+Low volume stock (total 33,037 < 450,000 over 60 min, threshold based on vol_ratio 1.94x): 1 times
+   - 15:57:00 @ $24.6100 (Unknown, 0.0%)
+
+Low volume stock (total 34,957 < 400,000 over 60 min, threshold based on vol_ratio 2.90x): 1 times
+   - 15:58:00 @ $22.9000 (Unknown, 0.0%)
+
+Low volume stock (total 37,915 < 300,000 over 60 min, threshold based on vol_ratio 3.94x): 1 times
+   - 16:00:00 @ $24.2000 (Unknown, 0.0%)
+
+Low volume stock (total 36,940 < 500,000 over 60 min, threshold based on vol_ratio 0.14x): 1 times
+   - 16:01:00 @ $24.8000 (Unknown, 0.0%)
+
+Low volume stock (total 35,942 < 500,000 over 60 min, threshold based on vol_ratio 0.07x): 1 times
+   - 16:02:00 @ $24.5000 (Unknown, 0.0%)
+
+Low volume stock (total 35,829 < 500,000 over 60 min, threshold based on vol_ratio 0.05x): 1 times
+   - 16:03:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 35,551 < 500,000 over 60 min, threshold based on vol_ratio 0.22x): 1 times
+   - 16:04:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 35,411 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 16:05:00 @ $26.0100 (Unknown, 0.0%)
+
+Low volume stock (total 34,541 < 500,000 over 60 min, threshold based on vol_ratio 0.14x): 1 times
+   - 16:06:00 @ $25.4000 (Unknown, 0.0%)
+
+Low volume stock (total 34,540 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:07:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 34,543 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:09:00 @ $26.5000 (Unknown, 0.0%)
+
+Low volume stock (total 32,515 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:11:00 @ $27.0000 (Unknown, 0.0%)
+
+Low volume stock (total 32,230 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 16:15:00 @ $26.5000 (Unknown, 0.0%)
+
+Low volume stock (total 29,630 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:19:00 @ $26.4900 (Unknown, 0.0%)
+
+Low volume stock (total 29,312 < 500,000 over 60 min, threshold based on vol_ratio 0.00x): 1 times
+   - 16:21:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 28,372 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 16:22:00 @ $28.5000 (Unknown, 0.0%)
+
+Low volume stock (total 28,250 < 500,000 over 60 min, threshold based on vol_ratio 0.11x): 1 times
+   - 16:24:00 @ $28.5000 (Unknown, 0.0%)
+
+Low volume stock (total 27,637 < 500,000 over 60 min, threshold based on vol_ratio 0.01x): 1 times
+   - 16:26:00 @ $27.2600 (Unknown, 0.0%)
+
+Low volume stock (total 27,521 < 500,000 over 60 min, threshold based on vol_ratio 0.30x): 1 times
+   - 16:27:00 @ $30.0000 (Unknown, 0.0%)
+
+Low volume stock (total 27,113 < 500,000 over 60 min, threshold based on vol_ratio 0.49x): 1 times
+   - 16:28:00 @ $30.1500 (Unknown, 0.0%)
+
+Low volume stock (total 26,514 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 16:29:00 @ $29.9000 (Unknown, 0.0%)
+
+Low volume stock (total 25,571 < 500,000 over 60 min, threshold based on vol_ratio 0.86x): 1 times
+   - 16:30:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 25,027 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 16:31:00 @ $29.5700 (Unknown, 0.0%)
+
+Low volume stock (total 24,715 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 16:33:00 @ $29.0000 (Unknown, 0.0%)
+
+Low volume stock (total 24,158 < 500,000 over 60 min, threshold based on vol_ratio 0.74x): 1 times
+   - 16:34:00 @ $28.5000 (Unknown, 0.0%)
+
+Low volume stock (total 23,872 < 500,000 over 60 min, threshold based on vol_ratio 0.88x): 1 times
+   - 16:35:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 23,694 < 500,000 over 60 min, threshold based on vol_ratio 0.89x): 1 times
+   - 16:37:00 @ $28.5400 (Unknown, 0.0%)
+
+Low volume stock (total 23,283 < 500,000 over 60 min, threshold based on vol_ratio 0.78x): 1 times
+   - 16:38:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 22,978 < 500,000 over 60 min, threshold based on vol_ratio 0.20x): 1 times
+   - 16:39:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 22,769 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 16:42:00 @ $28.6000 (Unknown, 0.0%)
+
+Low volume stock (total 22,262 < 400,000 over 60 min, threshold based on vol_ratio 2.34x): 1 times
+   - 16:43:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 22,176 < 500,000 over 60 min, threshold based on vol_ratio 0.81x): 1 times
+   - 16:45:00 @ $28.4500 (Unknown, 0.0%)
+
+Low volume stock (total 21,975 < 500,000 over 60 min, threshold based on vol_ratio 0.34x): 1 times
+   - 16:46:00 @ $30.0000 (Unknown, 0.0%)
+
+Low volume stock (total 21,193 < 300,000 over 60 min, threshold based on vol_ratio 3.32x): 1 times
+   - 16:47:00 @ $29.8800 (Unknown, 0.0%)
+
+Low volume stock (total 19,586 < 500,000 over 60 min, threshold based on vol_ratio 0.19x): 1 times
+   - 16:48:00 @ $29.8800 (Unknown, 0.0%)
+
+Low volume stock (total 19,431 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 16:49:00 @ $29.8800 (Unknown, 0.0%)
+
+Low volume stock (total 19,183 < 500,000 over 60 min, threshold based on vol_ratio 0.40x): 1 times
+   - 16:50:00 @ $29.8800 (Unknown, 0.0%)
+
+Low volume stock (total 18,815 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 16:52:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 18,690 < 500,000 over 60 min, threshold based on vol_ratio 0.04x): 1 times
+   - 17:01:00 @ $26.0000 (Unknown, 0.0%)
+
+Low volume stock (total 17,570 < 300,000 over 60 min, threshold based on vol_ratio 6.23x): 1 times
+   - 17:08:00 @ $25.5000 (Unknown, 0.0%)
+
+Low volume stock (total 16,421 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 17:09:00 @ $25.3000 (Unknown, 0.0%)
+
+Low volume stock (total 16,155 < 300,000 over 60 min, threshold based on vol_ratio 4.27x): 1 times
+   - 17:10:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 15,458 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 17:15:00 @ $26.2500 (Unknown, 0.0%)
+
+Low volume stock (total 15,306 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 17:25:00 @ $27.9900 (Unknown, 0.0%)
+
+Low volume stock (total 15,085 < 500,000 over 60 min, threshold based on vol_ratio 1.47x): 1 times
+   - 17:39:00 @ $27.5000 (Unknown, 0.0%)
+
+Low volume stock (total 14,324 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 17:59:00 @ $25.4700 (Unknown, 0.0%)
+
+Low volume stock (total 14,102 < 500,000 over 60 min, threshold based on vol_ratio 0.09x): 1 times
+   - 18:34:00 @ $25.1000 (Unknown, 0.0%)
+
+Low volume stock (total 13,721 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 18:37:00 @ $25.1000 (Unknown, 0.0%)
+
+Low volume stock (total 13,628 < 500,000 over 60 min, threshold based on vol_ratio 0.31x): 1 times
+   - 19:29:00 @ $25.0000 (Unknown, 0.0%)
+
+Low volume stock (total 12,358 < 400,000 over 60 min, threshold based on vol_ratio 2.51x): 1 times
+   - 05:37:00 @ $29.4800 (Unknown, 0.0%)
+
+Low volume stock (total 12,076 < 500,000 over 60 min, threshold based on vol_ratio 0.59x): 1 times
+   - 05:38:00 @ $28.0000 (Unknown, 0.0%)
+
+Low volume stock (total 11,414 < 500,000 over 60 min, threshold based on vol_ratio 0.12x): 1 times
+   - 05:42:00 @ $25.5700 (Unknown, 0.0%)
+
+Low volume stock (total 11,022 < 500,000 over 60 min, threshold based on vol_ratio 0.57x): 1 times
+   - 05:43:00 @ $25.5700 (Unknown, 0.0%)
+
+Low volume stock (total 10,293 < 400,000 over 60 min, threshold based on vol_ratio 2.21x): 1 times
+   - 05:56:00 @ $29.4900 (Unknown, 0.0%)
+
+Low volume stock (total 9,941 < 300,000 over 60 min, threshold based on vol_ratio 3.86x): 1 times
+   - 05:57:00 @ $29.5000 (Unknown, 0.0%)
+
+Low volume stock (total 9,742 < 500,000 over 60 min, threshold based on vol_ratio 0.03x): 1 times
+   - 06:05:00 @ $26.0400 (Unknown, 0.0%)
+
+Low volume stock (total 8,456 < 500,000 over 60 min, threshold based on vol_ratio 0.05x): 1 times
+   - 06:08:00 @ $26.2100 (Unknown, 0.0%)
+
+Low volume stock (total 8,102 < 500,000 over 60 min, threshold based on vol_ratio 0.78x): 1 times
+   - 06:26:00 @ $26.6000 (Unknown, 0.0%)
+
+Low volume stock (total 6,921 < 500,000 over 60 min, threshold based on vol_ratio 0.98x): 1 times
+   - 07:48:00 @ $30.3200 (Unknown, 0.0%)
+
+Low volume stock (total 5,017 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 07:49:00 @ $30.2000 (Unknown, 0.0%)
+
+Low volume stock (total 2,076 < 500,000 over 60 min, threshold based on vol_ratio 0.55x): 1 times
+   - 07:51:00 @ $30.2500 (Unknown, 0.0%)
+
+Low volume stock (total 2,016 < 500,000 over 60 min, threshold based on vol_ratio 1.36x): 1 times
+   - 07:52:00 @ $35.8000 (Unknown, 0.0%)
+
+Low volume stock (total 1,986 < 500,000 over 60 min, threshold based on vol_ratio 0.63x): 1 times
+   - 07:53:00 @ $35.8000 (Unknown, 0.0%)
+
+Low volume stock (total 1,954 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 07:54:00 @ $37.4200 (Unknown, 0.0%)
+
+Low volume stock (total 1,851 < 450,000 over 60 min, threshold based on vol_ratio 1.65x): 1 times
+   - 07:56:00 @ $50.0000 (Unknown, 0.0%)
+
+Low volume stock (total 2,352 < 300,000 over 60 min, threshold based on vol_ratio 9.32x): 1 times
+   - 07:57:00 @ $39.0000 (Unknown, 0.0%)
+
+Low volume stock (total 2,498 < 300,000 over 60 min, threshold based on vol_ratio 3.50x): 1 times
+   - 07:58:00 @ $41.1000 (Unknown, 0.0%)
+
+Low volume stock (total 2,657 < 400,000 over 60 min, threshold based on vol_ratio 2.15x): 1 times
+   - 07:59:00 @ $41.6100 (Unknown, 0.0%)
+
+Low volume stock (total 2,793 < 450,000 over 60 min, threshold based on vol_ratio 1.71x): 1 times
+   - 08:00:00 @ $41.6100 (Unknown, 0.0%)
+
+Low volume stock (total 7,904 < 300,000 over 60 min, threshold based on vol_ratio 15.34x): 1 times
+   - 08:01:00 @ $39.8700 (Unknown, 0.0%)
+
+Low volume stock (total 9,600 < 300,000 over 60 min, threshold based on vol_ratio 4.08x): 1 times
+   - 08:02:00 @ $44.9300 (Unknown, 0.0%)
+
+Low volume stock (total 16,291 < 300,000 over 60 min, threshold based on vol_ratio 8.90x): 1 times
+   - 08:03:00 @ $48.9100 (Unknown, 0.0%)
+
+Low volume stock (total 19,843 < 300,000 over 60 min, threshold based on vol_ratio 3.89x): 1 times
+   - 08:04:00 @ $44.7100 (Unknown, 0.0%)
+
+Low volume stock (total 24,812 < 300,000 over 60 min, threshold based on vol_ratio 4.22x): 1 times
+   - 08:05:00 @ $49.0000 (Unknown, 0.0%)
+
+Low volume stock (total 31,860 < 300,000 over 60 min, threshold based on vol_ratio 4.63x): 1 times
+   - 08:06:00 @ $52.5600 (Unknown, 0.0%)
+
+Low volume stock (total 35,320 < 400,000 over 60 min, threshold based on vol_ratio 2.07x): 1 times
+   - 08:07:00 @ $51.1200 (Unknown, 0.0%)
+
+Low volume stock (total 39,039 < 450,000 over 60 min, threshold based on vol_ratio 1.99x): 1 times
+   - 08:08:00 @ $50.1900 (Unknown, 0.0%)
+
+Low volume stock (total 44,622 < 400,000 over 60 min, threshold based on vol_ratio 2.58x): 1 times
+   - 08:09:00 @ $45.0600 (Unknown, 0.0%)
+
+Low volume stock (total 49,063 < 450,000 over 60 min, threshold based on vol_ratio 1.89x): 1 times
+   - 08:10:00 @ $46.5000 (Unknown, 0.0%)
+
+Low volume stock (total 52,573 < 500,000 over 60 min, threshold based on vol_ratio 1.40x): 1 times
+   - 08:11:00 @ $49.3000 (Unknown, 0.0%)
+
+Low volume stock (total 56,371 < 500,000 over 60 min, threshold based on vol_ratio 1.38x): 1 times
+   - 08:12:00 @ $48.0000 (Unknown, 0.0%)
+
+Low volume stock (total 59,480 < 500,000 over 60 min, threshold based on vol_ratio 1.08x): 1 times
+   - 08:13:00 @ $46.2300 (Unknown, 0.0%)
+
+Low volume stock (total 64,409 < 450,000 over 60 min, threshold based on vol_ratio 1.57x): 1 times
+   - 08:14:00 @ $45.0000 (Unknown, 0.0%)
+
+Low volume stock (total 68,558 < 500,000 over 60 min, threshold based on vol_ratio 1.23x): 1 times
+   - 08:15:00 @ $46.2000 (Unknown, 0.0%)
+
+Low volume stock (total 72,822 < 500,000 over 60 min, threshold based on vol_ratio 1.20x): 1 times
+   - 08:16:00 @ $46.0000 (Unknown, 0.0%)
+
+Low volume stock (total 74,404 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 08:17:00 @ $46.3100 (Unknown, 0.0%)
+
+Low volume stock (total 77,878 < 500,000 over 60 min, threshold based on vol_ratio 0.92x): 1 times
+   - 08:18:00 @ $48.5100 (Unknown, 0.0%)
+
+Low volume stock (total 80,693 < 500,000 over 60 min, threshold based on vol_ratio 0.72x): 1 times
+   - 08:19:00 @ $47.9500 (Unknown, 0.0%)
+
+Low volume stock (total 83,545 < 500,000 over 60 min, threshold based on vol_ratio 0.70x): 1 times
+   - 08:20:00 @ $46.0900 (Unknown, 0.0%)
+
+Low volume stock (total 85,000 < 500,000 over 60 min, threshold based on vol_ratio 0.38x): 1 times
+   - 08:21:00 @ $45.5200 (Unknown, 0.0%)
+
+Low volume stock (total 88,246 < 500,000 over 60 min, threshold based on vol_ratio 0.84x): 1 times
+   - 08:22:00 @ $44.9400 (Unknown, 0.0%)
+
+Low volume stock (total 90,688 < 500,000 over 60 min, threshold based on vol_ratio 0.66x): 1 times
+   - 08:23:00 @ $47.4700 (Unknown, 0.0%)
+
+Low volume stock (total 93,407 < 500,000 over 60 min, threshold based on vol_ratio 0.74x): 1 times
+   - 08:24:00 @ $47.5100 (Unknown, 0.0%)
+
+Low volume stock (total 94,828 < 500,000 over 60 min, threshold based on vol_ratio 0.43x): 1 times
+   - 08:25:00 @ $46.5300 (Unknown, 0.0%)
+
+Low volume stock (total 96,182 < 500,000 over 60 min, threshold based on vol_ratio 0.42x): 1 times
+   - 08:26:00 @ $46.0000 (Unknown, 0.0%)
+
+Low volume stock (total 97,073 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 08:27:00 @ $46.5000 (Unknown, 0.0%)
+
+Low volume stock (total 97,534 < 500,000 over 60 min, threshold based on vol_ratio 0.16x): 1 times
+   - 08:28:00 @ $46.3400 (Unknown, 0.0%)
+
+Low volume stock (total 100,209 < 500,000 over 60 min, threshold based on vol_ratio 0.95x): 1 times
+   - 08:29:00 @ $47.2200 (Unknown, 0.0%)
+
+Low volume stock (total 108,814 < 400,000 over 60 min, threshold based on vol_ratio 2.86x): 1 times
+   - 08:30:00 @ $50.3700 (Unknown, 0.0%)
+
+Low volume stock (total 114,022 < 450,000 over 60 min, threshold based on vol_ratio 1.73x): 1 times
+   - 08:31:00 @ $52.4300 (Unknown, 0.0%)
+
+Low volume stock (total 118,366 < 500,000 over 60 min, threshold based on vol_ratio 1.39x): 1 times
+   - 08:32:00 @ $51.1600 (Unknown, 0.0%)
+
+Low volume stock (total 121,519 < 500,000 over 60 min, threshold based on vol_ratio 1.05x): 1 times
+   - 08:33:00 @ $51.6900 (Unknown, 0.0%)
+
+Low volume stock (total 131,922 < 300,000 over 60 min, threshold based on vol_ratio 3.05x): 1 times
+   - 08:34:00 @ $55.4700 (Unknown, 0.0%)
+
+Low volume stock (total 152,949 < 300,000 over 60 min, threshold based on vol_ratio 4.95x): 1 times
+   - 08:35:00 @ $55.7100 (Unknown, 0.0%)
+
+Low volume stock (total 162,577 < 400,000 over 60 min, threshold based on vol_ratio 2.14x): 1 times
+   - 08:36:00 @ $52.7000 (Unknown, 0.0%)
+
+Low volume stock (total 178,319 < 300,000 over 60 min, threshold based on vol_ratio 3.01x): 1 times
+   - 08:37:00 @ $49.7200 (Unknown, 0.0%)
+
+Low volume stock (total 183,904 < 500,000 over 60 min, threshold based on vol_ratio 1.05x): 1 times
+   - 08:38:00 @ $50.5100 (Unknown, 0.0%)
+
+Low volume stock (total 186,596 < 500,000 over 60 min, threshold based on vol_ratio 0.51x): 1 times
+   - 08:39:00 @ $51.4100 (Unknown, 0.0%)
+
+Low volume stock (total 189,171 < 500,000 over 60 min, threshold based on vol_ratio 0.49x): 1 times
+   - 08:40:00 @ $50.1000 (Unknown, 0.0%)
+
+Low volume stock (total 192,192 < 500,000 over 60 min, threshold based on vol_ratio 0.58x): 1 times
+   - 08:41:00 @ $52.0100 (Unknown, 0.0%)
+
+Low volume stock (total 194,140 < 500,000 over 60 min, threshold based on vol_ratio 0.37x): 1 times
+   - 08:42:00 @ $50.2000 (Unknown, 0.0%)
+
+Low volume stock (total 196,782 < 500,000 over 60 min, threshold based on vol_ratio 0.50x): 1 times
+   - 08:43:00 @ $51.2100 (Unknown, 0.0%)
+
+Low volume stock (total 197,948 < 500,000 over 60 min, threshold based on vol_ratio 0.23x): 1 times
+   - 08:44:00 @ $50.5100 (Unknown, 0.0%)
+
+Low volume stock (total 199,954 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 08:45:00 @ $51.1300 (Unknown, 0.0%)
+
+Low volume stock (total 202,910 < 500,000 over 60 min, threshold based on vol_ratio 0.58x): 1 times
+   - 08:46:00 @ $52.7000 (Unknown, 0.0%)
+
+Low volume stock (total 204,573 < 500,000 over 60 min, threshold based on vol_ratio 0.31x): 1 times
+   - 08:47:00 @ $51.2600 (Unknown, 0.0%)
+
+Low volume stock (total 205,137 < 500,000 over 60 min, threshold based on vol_ratio 0.10x): 1 times
+   - 08:48:00 @ $50.8100 (Unknown, 0.0%)
+
+Low volume stock (total 206,155 < 500,000 over 60 min, threshold based on vol_ratio 0.20x): 1 times
+   - 08:49:00 @ $50.7500 (Unknown, 0.0%)
+
+Low volume stock (total 207,173 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 08:50:00 @ $51.5000 (Unknown, 0.0%)
+
+Low volume stock (total 211,009 < 500,000 over 60 min, threshold based on vol_ratio 0.79x): 1 times
+   - 08:51:00 @ $49.9900 (Unknown, 0.0%)
+
+Low volume stock (total 214,168 < 500,000 over 60 min, threshold based on vol_ratio 0.66x): 1 times
+   - 08:52:00 @ $50.2500 (Unknown, 0.0%)
+
+Low volume stock (total 215,352 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 08:53:00 @ $51.3900 (Unknown, 0.0%)
+
+Low volume stock (total 217,188 < 500,000 over 60 min, threshold based on vol_ratio 0.43x): 1 times
+   - 08:54:00 @ $50.6200 (Unknown, 0.0%)
+
+Low volume stock (total 218,387 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 08:55:00 @ $51.0400 (Unknown, 0.0%)
+
+Low volume stock (total 219,051 < 500,000 over 60 min, threshold based on vol_ratio 0.25x): 1 times
+   - 08:56:00 @ $50.3700 (Unknown, 0.0%)
+
+Low volume stock (total 219,193 < 500,000 over 60 min, threshold based on vol_ratio 0.32x): 1 times
+   - 08:57:00 @ $51.0000 (Unknown, 0.0%)
+
+Low volume stock (total 220,326 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 08:58:00 @ $50.0800 (Unknown, 0.0%)
+
+Low volume stock (total 221,102 < 500,000 over 60 min, threshold based on vol_ratio 0.52x): 1 times
+   - 08:59:00 @ $51.0000 (Unknown, 0.0%)
+
+Low volume stock (total 223,435 < 500,000 over 60 min, threshold based on vol_ratio 1.38x): 1 times
+   - 09:00:00 @ $50.9900 (Unknown, 0.0%)
+
+Low volume stock (total 221,648 < 450,000 over 60 min, threshold based on vol_ratio 1.84x): 1 times
+   - 09:01:00 @ $51.7500 (Unknown, 0.0%)
+
+Low volume stock (total 220,992 < 500,000 over 60 min, threshold based on vol_ratio 0.59x): 1 times
+   - 09:02:00 @ $51.8300 (Unknown, 0.0%)
+
+Low volume stock (total 216,812 < 500,000 over 60 min, threshold based on vol_ratio 1.43x): 1 times
+   - 09:03:00 @ $50.5000 (Unknown, 0.0%)
+
+Low volume stock (total 214,699 < 500,000 over 60 min, threshold based on vol_ratio 0.85x): 1 times
+   - 09:04:00 @ $50.6300 (Unknown, 0.0%)
+
+Low volume stock (total 212,021 < 500,000 over 60 min, threshold based on vol_ratio 1.29x): 1 times
+   - 09:05:00 @ $50.3000 (Unknown, 0.0%)
+
+Low volume stock (total 207,310 < 500,000 over 60 min, threshold based on vol_ratio 1.34x): 1 times
+   - 09:06:00 @ $50.7800 (Unknown, 0.0%)
+
+Low volume stock (total 205,728 < 500,000 over 60 min, threshold based on vol_ratio 1.10x): 1 times
+   - 09:07:00 @ $50.5000 (Unknown, 0.0%)
+
+Low volume stock (total 202,713 < 500,000 over 60 min, threshold based on vol_ratio 0.42x): 1 times
+   - 09:08:00 @ $50.8300 (Unknown, 0.0%)
+
+Low volume stock (total 198,145 < 500,000 over 60 min, threshold based on vol_ratio 0.58x): 1 times
+   - 09:09:00 @ $51.0100 (Unknown, 0.0%)
+
+Low volume stock (total 194,228 < 500,000 over 60 min, threshold based on vol_ratio 0.35x): 1 times
+   - 09:10:00 @ $50.3600 (Unknown, 0.0%)
+
+Low volume stock (total 191,234 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 09:11:00 @ $50.7000 (Unknown, 0.0%)
+
+Low volume stock (total 187,642 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 09:12:00 @ $50.2600 (Unknown, 0.0%)
+
+Low volume stock (total 187,411 < 450,000 over 60 min, threshold based on vol_ratio 1.92x): 1 times
+   - 09:13:00 @ $49.0000 (Unknown, 0.0%)
+
+Low volume stock (total 183,018 < 500,000 over 60 min, threshold based on vol_ratio 0.38x): 1 times
+   - 09:14:00 @ $50.1900 (Unknown, 0.0%)
+
+Low volume stock (total 179,030 < 500,000 over 60 min, threshold based on vol_ratio 0.12x): 1 times
+   - 09:15:00 @ $50.1400 (Unknown, 0.0%)
+
+Low volume stock (total 174,832 < 500,000 over 60 min, threshold based on vol_ratio 0.06x): 1 times
+   - 09:16:00 @ $50.3300 (Unknown, 0.0%)
+
+Low volume stock (total 173,422 < 500,000 over 60 min, threshold based on vol_ratio 0.15x): 1 times
+   - 09:17:00 @ $50.3700 (Unknown, 0.0%)
+
+Low volume stock (total 170,888 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 09:18:00 @ $48.9600 (Unknown, 0.0%)
+
+Low volume stock (total 180,614 < 300,000 over 60 min, threshold based on vol_ratio 6.60x): 1 times
+   - 09:19:00 @ $48.7800 (Unknown, 0.0%)
+
+Low volume stock (total 183,740 < 400,000 over 60 min, threshold based on vol_ratio 2.88x): 1 times
+   - 09:20:00 @ $48.0700 (Unknown, 0.0%)
+
+Low volume stock (total 186,762 < 400,000 over 60 min, threshold based on vol_ratio 2.10x): 1 times
+   - 09:21:00 @ $49.4900 (Unknown, 0.0%)
+
+Low volume stock (total 194,116 < 300,000 over 60 min, threshold based on vol_ratio 4.08x): 1 times
+   - 09:22:00 @ $52.3900 (Unknown, 0.0%)
+
+Low volume stock (total 197,142 < 450,000 over 60 min, threshold based on vol_ratio 1.99x): 1 times
+   - 09:23:00 @ $52.0000 (Unknown, 0.0%)
+
+Low volume stock (total 196,077 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 09:24:00 @ $51.3000 (Unknown, 0.0%)
+
+Low volume stock (total 195,923 < 500,000 over 60 min, threshold based on vol_ratio 0.50x): 1 times
+   - 09:25:00 @ $51.0900 (Unknown, 0.0%)
+
+Low volume stock (total 196,022 < 500,000 over 60 min, threshold based on vol_ratio 0.54x): 1 times
+   - 09:26:00 @ $51.3300 (Unknown, 0.0%)
+
+Low volume stock (total 197,227 < 500,000 over 60 min, threshold based on vol_ratio 0.78x): 1 times
+   - 09:27:00 @ $52.5100 (Unknown, 0.0%)
+
+Low volume stock (total 197,961 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 09:28:00 @ $52.2600 (Unknown, 0.0%)
+
+Low volume stock (total 198,331 < 500,000 over 60 min, threshold based on vol_ratio 1.08x): 1 times
+   - 09:29:00 @ $51.0000 (Unknown, 0.0%)
+
+Low volume stock (total 191,256 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 09:30:00 @ $50.0200 (Unknown, 0.0%)
+
+Low volume stock (total 208,914 < 300,000 over 60 min, threshold based on vol_ratio 5.78x): 1 times
+   - 09:31:00 @ $48.9300 (Unknown, 0.0%)
+
+Low volume stock (total 217,447 < 400,000 over 60 min, threshold based on vol_ratio 2.79x): 1 times
+   - 09:32:00 @ $48.2300 (Unknown, 0.0%)
+
+Low volume stock (total 232,654 < 300,000 over 60 min, threshold based on vol_ratio 3.43x): 1 times
+   - 09:33:00 @ $51.0400 (Unknown, 0.0%)
+
+Low volume stock (total 238,446 < 400,000 over 60 min, threshold based on vol_ratio 2.62x): 1 times
+   - 09:34:00 @ $53.6600 (Unknown, 0.0%)
+
+Low volume stock (total 241,104 < 300,000 over 60 min, threshold based on vol_ratio 3.22x): 1 times
+   - 09:35:00 @ $50.3200 (Unknown, 0.0%)
+
+Low volume stock (total 241,301 < 500,000 over 60 min, threshold based on vol_ratio 1.26x): 1 times
+   - 09:36:00 @ $50.8800 (Unknown, 0.0%)
+
+Low volume stock (total 227,405 < 500,000 over 60 min, threshold based on vol_ratio 0.23x): 1 times
+   - 09:37:00 @ $50.9800 (Unknown, 0.0%)
+
+Low volume stock (total 224,941 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 09:38:00 @ $50.9800 (Unknown, 0.0%)
+
+Low volume stock (total 241,887 < 400,000 over 60 min, threshold based on vol_ratio 2.34x): 1 times
+   - 09:39:00 @ $49.9400 (Unknown, 0.0%)
+
+Low volume stock (total 262,160 < 400,000 over 60 min, threshold based on vol_ratio 2.48x): 1 times
+   - 09:40:00 @ $53.0600 (Unknown, 0.0%)
+
+Low volume stock (total 266,440 < 500,000 over 60 min, threshold based on vol_ratio 0.79x): 1 times
+   - 09:41:00 @ $51.9800 (Unknown, 0.0%)
+
+Low volume stock (total 269,436 < 500,000 over 60 min, threshold based on vol_ratio 0.55x): 1 times
+   - 09:42:00 @ $51.9800 (Unknown, 0.0%)
+
+Low volume stock (total 270,580 < 500,000 over 60 min, threshold based on vol_ratio 0.42x): 1 times
+   - 09:43:00 @ $52.5000 (Unknown, 0.0%)
+
+Low volume stock (total 272,107 < 500,000 over 60 min, threshold based on vol_ratio 0.30x): 1 times
+   - 09:44:00 @ $51.2900 (Unknown, 0.0%)
+
+Low volume stock (total 282,325 < 500,000 over 60 min, threshold based on vol_ratio 1.28x): 1 times
+   - 09:45:00 @ $50.0000 (Unknown, 0.0%)
+
+Low volume stock (total 285,671 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 09:46:00 @ $50.1400 (Unknown, 0.0%)
+
+Low volume stock (total 285,734 < 500,000 over 60 min, threshold based on vol_ratio 0.18x): 1 times
+   - 09:47:00 @ $50.4500 (Unknown, 0.0%)
+
+Low volume stock (total 300,844 < 500,000 over 60 min, threshold based on vol_ratio 1.48x): 1 times
+   - 09:48:00 @ $50.0100 (Unknown, 0.0%)
+
+Low volume stock (total 303,333 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 09:49:00 @ $50.0500 (Unknown, 0.0%)
+
+Low volume stock (total 308,197 < 500,000 over 60 min, threshold based on vol_ratio 0.55x): 1 times
+   - 09:50:00 @ $50.3400 (Unknown, 0.0%)
+
+Low volume stock (total 307,686 < 500,000 over 60 min, threshold based on vol_ratio 0.34x): 1 times
+   - 09:51:00 @ $50.5700 (Unknown, 0.0%)
+
+Low volume stock (total 310,053 < 500,000 over 60 min, threshold based on vol_ratio 0.59x): 1 times
+   - 09:52:00 @ $51.2000 (Unknown, 0.0%)
+
+Low volume stock (total 309,983 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 09:53:00 @ $51.2000 (Unknown, 0.0%)
+
+Low volume stock (total 310,455 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 09:54:00 @ $51.4600 (Unknown, 0.0%)
+
+Low volume stock (total 314,625 < 500,000 over 60 min, threshold based on vol_ratio 0.77x): 1 times
+   - 09:55:00 @ $49.8200 (Unknown, 0.0%)
+
+Low volume stock (total 314,488 < 500,000 over 60 min, threshold based on vol_ratio 0.09x): 1 times
+   - 09:56:00 @ $51.1000 (Unknown, 0.0%)
+
+Low volume stock (total 315,965 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 09:57:00 @ $50.9700 (Unknown, 0.0%)
+
+Low volume stock (total 319,389 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 09:58:00 @ $50.3000 (Unknown, 0.0%)
+
+Low volume stock (total 325,359 < 500,000 over 60 min, threshold based on vol_ratio 1.16x): 1 times
+   - 09:59:00 @ $49.9000 (Unknown, 0.0%)
+
+Low volume stock (total 327,095 < 500,000 over 60 min, threshold based on vol_ratio 0.83x): 1 times
+   - 10:00:00 @ $49.7600 (Unknown, 0.0%)
+
+Low volume stock (total 334,990 < 400,000 over 60 min, threshold based on vol_ratio 2.14x): 1 times
+   - 10:01:00 @ $50.0000 (Unknown, 0.0%)
+
+Low volume stock (total 338,308 < 500,000 over 60 min, threshold based on vol_ratio 0.84x): 1 times
+   - 10:02:00 @ $50.2500 (Unknown, 0.0%)
+
+Low volume stock (total 336,915 < 500,000 over 60 min, threshold based on vol_ratio 0.22x): 1 times
+   - 10:03:00 @ $50.2000 (Unknown, 0.0%)
+
+Low volume stock (total 358,272 < 500,000 over 60 min, threshold based on vol_ratio 0.86x): 1 times
+   - 10:05:00 @ $50.5000 (Unknown, 0.0%)
+
+Low volume stock (total 357,565 < 500,000 over 60 min, threshold based on vol_ratio 0.31x): 1 times
+   - 10:06:00 @ $51.2300 (Unknown, 0.0%)
+
+Low volume stock (total 359,527 < 500,000 over 60 min, threshold based on vol_ratio 0.72x): 1 times
+   - 10:08:00 @ $51.3000 (Unknown, 0.0%)
+
+Low volume stock (total 371,178 < 400,000 over 60 min, threshold based on vol_ratio 2.35x): 1 times
+   - 10:09:00 @ $53.5000 (Unknown, 0.0%)
+
+Low volume stock (total 429,595 < 450,000 over 60 min, threshold based on vol_ratio 1.82x): 1 times
+   - 10:12:00 @ $55.0400 (Unknown, 0.0%)
+
+Low volume stock (total 437,590 < 500,000 over 60 min, threshold based on vol_ratio 1.05x): 1 times
+   - 10:13:00 @ $52.0300 (Unknown, 0.0%)
+
+Low volume stock (total 438,178 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 10:14:00 @ $54.0000 (Unknown, 0.0%)
+
+Low volume stock (total 443,121 < 500,000 over 60 min, threshold based on vol_ratio 0.68x): 1 times
+   - 10:15:00 @ $51.4100 (Unknown, 0.0%)
+
+Low volume stock (total 447,785 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 10:17:00 @ $52.5000 (Unknown, 0.0%)
+
+Low volume stock (total 450,983 < 500,000 over 60 min, threshold based on vol_ratio 0.40x): 1 times
+   - 10:18:00 @ $52.4300 (Unknown, 0.0%)
+
+Low volume stock (total 454,330 < 500,000 over 60 min, threshold based on vol_ratio 0.43x): 1 times
+   - 10:19:00 @ $52.9700 (Unknown, 0.0%)
+
+Low volume stock (total 455,659 < 500,000 over 60 min, threshold based on vol_ratio 0.28x): 1 times
+   - 10:20:00 @ $53.0100 (Unknown, 0.0%)
+
+Low volume stock (total 445,947 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 10:21:00 @ $53.9600 (Unknown, 0.0%)
+
+Low volume stock (total 444,938 < 500,000 over 60 min, threshold based on vol_ratio 0.62x): 1 times
+   - 10:22:00 @ $53.0800 (Unknown, 0.0%)
+
+Low volume stock (total 442,887 < 500,000 over 60 min, threshold based on vol_ratio 0.32x): 1 times
+   - 10:23:00 @ $53.0600 (Unknown, 0.0%)
+
+Low volume stock (total 434,013 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 10:24:00 @ $52.9600 (Unknown, 0.0%)
+
+Low volume stock (total 430,222 < 500,000 over 60 min, threshold based on vol_ratio 0.23x): 1 times
+   - 10:25:00 @ $53.5000 (Unknown, 0.0%)
+
+Low volume stock (total 429,774 < 500,000 over 60 min, threshold based on vol_ratio 0.19x): 1 times
+   - 10:26:00 @ $52.7000 (Unknown, 0.0%)
+
+Low volume stock (total 433,196 < 500,000 over 60 min, threshold based on vol_ratio 0.74x): 1 times
+   - 10:27:00 @ $51.2900 (Unknown, 0.0%)
+
+Low volume stock (total 436,701 < 500,000 over 60 min, threshold based on vol_ratio 0.75x): 1 times
+   - 10:28:00 @ $51.0000 (Unknown, 0.0%)
+
+Low volume stock (total 437,696 < 500,000 over 60 min, threshold based on vol_ratio 0.47x): 1 times
+   - 10:29:00 @ $50.9800 (Unknown, 0.0%)
+
+Low volume stock (total 444,204 < 500,000 over 60 min, threshold based on vol_ratio 1.21x): 1 times
+   - 10:30:00 @ $50.8100 (Unknown, 0.0%)
+
+Low volume stock (total 444,775 < 500,000 over 60 min, threshold based on vol_ratio 0.66x): 1 times
+   - 10:31:00 @ $51.9000 (Unknown, 0.0%)
+
+Low volume stock (total 445,162 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 10:32:00 @ $51.2500 (Unknown, 0.0%)
+
+Low volume stock (total 424,223 < 500,000 over 60 min, threshold based on vol_ratio 0.56x): 1 times
+   - 10:33:00 @ $51.0200 (Unknown, 0.0%)
+
+Low volume stock (total 416,768 < 450,000 over 60 min, threshold based on vol_ratio 1.52x): 1 times
+   - 10:34:00 @ $50.0000 (Unknown, 0.0%)
+
+Low volume stock (total 401,827 < 500,000 over 60 min, threshold based on vol_ratio 0.99x): 1 times
+   - 10:35:00 @ $49.6700 (Unknown, 0.0%)
+
+Low volume stock (total 390,597 < 500,000 over 60 min, threshold based on vol_ratio 1.40x): 1 times
+   - 10:36:00 @ $50.7500 (Unknown, 0.0%)
+
+Low volume stock (total 368,267 < 500,000 over 60 min, threshold based on vol_ratio 0.40x): 1 times
+   - 10:37:00 @ $51.2900 (Unknown, 0.0%)
+
+Low volume stock (total 360,820 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 10:38:00 @ $49.7600 (Unknown, 0.0%)
+
+Low volume stock (total 361,158 < 500,000 over 60 min, threshold based on vol_ratio 0.67x): 1 times
+   - 10:39:00 @ $50.1000 (Unknown, 0.0%)
+
+Low volume stock (total 359,996 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 10:40:00 @ $50.1200 (Unknown, 0.0%)
+
+Low volume stock (total 342,999 < 500,000 over 60 min, threshold based on vol_ratio 0.82x): 1 times
+   - 10:41:00 @ $49.3500 (Unknown, 0.0%)
+
+Low volume stock (total 323,615 < 500,000 over 60 min, threshold based on vol_ratio 1.10x): 1 times
+   - 10:42:00 @ $50.0000 (Unknown, 0.0%)
+
+Low volume stock (total 317,284 < 500,000 over 60 min, threshold based on vol_ratio 0.34x): 1 times
+   - 10:43:00 @ $51.0000 (Unknown, 0.0%)
+
+Low volume stock (total 314,347 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 10:45:00 @ $50.4400 (Unknown, 0.0%)
+
+Low volume stock (total 314,311 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 10:47:00 @ $50.2400 (Unknown, 0.0%)
+
+Low volume stock (total 313,263 < 500,000 over 60 min, threshold based on vol_ratio 0.51x): 1 times
+   - 10:48:00 @ $51.1600 (Unknown, 0.0%)
+
+Low volume stock (total 301,658 < 500,000 over 60 min, threshold based on vol_ratio 0.23x): 1 times
+   - 10:49:00 @ $50.7100 (Unknown, 0.0%)
+
+Low volume stock (total 300,041 < 450,000 over 60 min, threshold based on vol_ratio 1.60x): 1 times
+   - 10:53:00 @ $52.1900 (Unknown, 0.0%)
+
+Low volume stock (total 299,381 < 500,000 over 60 min, threshold based on vol_ratio 0.37x): 1 times
+   - 10:54:00 @ $51.5000 (Unknown, 0.0%)
+
+Low volume stock (total 284,491 < 500,000 over 60 min, threshold based on vol_ratio 0.31x): 1 times
+   - 10:55:00 @ $51.5000 (Unknown, 0.0%)
+
+Low volume stock (total 286,605 < 400,000 over 60 min, threshold based on vol_ratio 2.11x): 1 times
+   - 10:56:00 @ $52.8600 (Unknown, 0.0%)
+
+Low volume stock (total 282,281 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 10:57:00 @ $52.7300 (Unknown, 0.0%)
+
+Low volume stock (total 280,848 < 500,000 over 60 min, threshold based on vol_ratio 0.72x): 1 times
+   - 10:58:00 @ $52.7000 (Unknown, 0.0%)
+
+Low volume stock (total 278,477 < 500,000 over 60 min, threshold based on vol_ratio 1.25x): 1 times
+   - 10:59:00 @ $53.0000 (Unknown, 0.0%)
+
+Low volume stock (total 279,244 < 500,000 over 60 min, threshold based on vol_ratio 0.78x): 1 times
+   - 11:00:00 @ $52.7400 (Unknown, 0.0%)
+
+Low volume stock (total 278,144 < 500,000 over 60 min, threshold based on vol_ratio 0.54x): 1 times
+   - 11:01:00 @ $52.5900 (Unknown, 0.0%)
+
+Low volume stock (total 273,981 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 11:02:00 @ $51.3200 (Unknown, 0.0%)
+
+Low volume stock (total 274,639 < 500,000 over 60 min, threshold based on vol_ratio 0.56x): 1 times
+   - 11:03:00 @ $51.2100 (Unknown, 0.0%)
+
+Low volume stock (total 274,880 < 500,000 over 60 min, threshold based on vol_ratio 1.08x): 1 times
+   - 11:04:00 @ $51.8100 (Unknown, 0.0%)
+
+Low volume stock (total 270,366 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 11:05:00 @ $51.3100 (Unknown, 0.0%)
+
+Low volume stock (total 265,577 < 500,000 over 60 min, threshold based on vol_ratio 1.01x): 1 times
+   - 11:06:00 @ $50.2600 (Unknown, 0.0%)
+
+Low volume stock (total 262,582 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 11:07:00 @ $51.7000 (Unknown, 0.0%)
+
+Low volume stock (total 255,985 < 400,000 over 60 min, threshold based on vol_ratio 2.13x): 1 times
+   - 11:13:00 @ $50.5000 (Unknown, 0.0%)
+
+Low volume stock (total 252,904 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 11:15:00 @ $50.2600 (Unknown, 0.0%)
+
+Low volume stock (total 256,046 < 450,000 over 60 min, threshold based on vol_ratio 1.98x): 1 times
+   - 11:16:00 @ $51.2800 (Unknown, 0.0%)
+
+Low volume stock (total 236,062 < 500,000 over 60 min, threshold based on vol_ratio 0.19x): 1 times
+   - 11:17:00 @ $50.5000 (Unknown, 0.0%)
+
+Low volume stock (total 235,112 < 450,000 over 60 min, threshold based on vol_ratio 1.71x): 1 times
+   - 11:23:00 @ $53.0000 (Unknown, 0.0%)
+
+Low volume stock (total 234,953 < 500,000 over 60 min, threshold based on vol_ratio 0.71x): 1 times
+   - 11:24:00 @ $51.8000 (Unknown, 0.0%)
+
+Low volume stock (total 231,863 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 11:25:00 @ $51.5000 (Unknown, 0.0%)
+
+Low volume stock (total 227,332 < 300,000 over 60 min, threshold based on vol_ratio 3.24x): 1 times
+   - 11:26:00 @ $54.5600 (Unknown, 0.0%)
+
+Low volume stock (total 210,863 < 400,000 over 60 min, threshold based on vol_ratio 2.34x): 1 times
+   - 11:27:00 @ $53.0000 (Unknown, 0.0%)
+
+Low volume stock (total 188,825 < 500,000 over 60 min, threshold based on vol_ratio 1.02x): 1 times
+   - 11:28:00 @ $52.0000 (Unknown, 0.0%)
+
+Low volume stock (total 176,506 < 500,000 over 60 min, threshold based on vol_ratio 0.66x): 1 times
+   - 11:32:00 @ $52.1000 (Unknown, 0.0%)
+
+Low volume stock (total 169,852 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 11:37:00 @ $52.4700 (Unknown, 0.0%)
+
+Low volume stock (total 166,656 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 11:38:00 @ $53.1800 (Unknown, 0.0%)
+
+Low volume stock (total 163,321 < 500,000 over 60 min, threshold based on vol_ratio 0.92x): 1 times
+   - 11:39:00 @ $53.2200 (Unknown, 0.0%)
+
+Low volume stock (total 159,106 < 500,000 over 60 min, threshold based on vol_ratio 0.26x): 1 times
+   - 11:40:00 @ $53.6600 (Unknown, 0.0%)
+
+Low volume stock (total 174,938 < 300,000 over 60 min, threshold based on vol_ratio 5.96x): 1 times
+   - 11:42:00 @ $59.0000 (Unknown, 0.0%)
+
+Low volume stock (total 193,773 < 300,000 over 60 min, threshold based on vol_ratio 5.32x): 1 times
+   - 11:43:00 @ $62.5600 (Unknown, 0.0%)
+
+Low volume stock (total 209,141 < 300,000 over 60 min, threshold based on vol_ratio 3.48x): 1 times
+   - 11:44:00 @ $63.3000 (Unknown, 0.0%)
+
+Low volume stock (total 220,124 < 400,000 over 60 min, threshold based on vol_ratio 2.44x): 1 times
+   - 11:45:00 @ $65.4500 (Unknown, 0.0%)
+
+Low volume stock (total 230,951 < 400,000 over 60 min, threshold based on vol_ratio 2.47x): 1 times
+   - 11:46:00 @ $63.0100 (Unknown, 0.0%)
+
+Low volume stock (total 240,464 < 450,000 over 60 min, threshold based on vol_ratio 1.77x): 1 times
+   - 11:47:00 @ $63.0000 (Unknown, 0.0%)
+
+Low volume stock (total 243,793 < 500,000 over 60 min, threshold based on vol_ratio 0.74x): 1 times
+   - 11:48:00 @ $63.4200 (Unknown, 0.0%)
+
+Low volume stock (total 254,899 < 450,000 over 60 min, threshold based on vol_ratio 1.74x): 1 times
+   - 11:50:00 @ $64.0700 (Unknown, 0.0%)
+
+Low volume stock (total 267,245 < 450,000 over 60 min, threshold based on vol_ratio 1.69x): 1 times
+   - 11:51:00 @ $64.4100 (Unknown, 0.0%)
+
+Low volume stock (total 269,266 < 500,000 over 60 min, threshold based on vol_ratio 0.83x): 1 times
+   - 11:52:00 @ $64.9400 (Unknown, 0.0%)
+
+Low volume stock (total 270,888 < 500,000 over 60 min, threshold based on vol_ratio 0.78x): 1 times
+   - 11:53:00 @ $65.0300 (Unknown, 0.0%)
+
+Low volume stock (total 269,797 < 500,000 over 60 min, threshold based on vol_ratio 0.24x): 1 times
+   - 11:54:00 @ $64.5100 (Unknown, 0.0%)
+
+Low volume stock (total 268,202 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 11:55:00 @ $65.5200 (Unknown, 0.0%)
+
+Low volume stock (total 274,321 < 500,000 over 60 min, threshold based on vol_ratio 1.13x): 1 times
+   - 11:56:00 @ $66.6300 (Unknown, 0.0%)
+
+Low volume stock (total 292,305 < 400,000 over 60 min, threshold based on vol_ratio 2.10x): 1 times
+   - 11:57:00 @ $69.1800 (Unknown, 0.0%)
+
+Low volume stock (total 300,704 < 500,000 over 60 min, threshold based on vol_ratio 1.06x): 1 times
+   - 11:58:00 @ $69.4800 (Unknown, 0.0%)
+
+Low volume stock (total 300,663 < 500,000 over 60 min, threshold based on vol_ratio 0.53x): 1 times
+   - 11:59:00 @ $69.4500 (Unknown, 0.0%)
+
+Low volume stock (total 313,429 < 500,000 over 60 min, threshold based on vol_ratio 1.50x): 1 times
+   - 12:00:00 @ $71.7800 (Unknown, 0.0%)
+
+Low volume stock (total 321,342 < 500,000 over 60 min, threshold based on vol_ratio 1.12x): 1 times
+   - 12:01:00 @ $71.7000 (Unknown, 0.0%)
+
+Low volume stock (total 332,909 < 500,000 over 60 min, threshold based on vol_ratio 1.07x): 1 times
+   - 12:02:00 @ $69.0000 (Unknown, 0.0%)
+
+Low volume stock (total 336,235 < 500,000 over 60 min, threshold based on vol_ratio 0.50x): 1 times
+   - 12:03:00 @ $68.0400 (Unknown, 0.0%)
+
+Low volume stock (total 344,383 < 500,000 over 60 min, threshold based on vol_ratio 0.96x): 1 times
+   - 12:04:00 @ $67.6100 (Unknown, 0.0%)
+
+Low volume stock (total 347,229 < 500,000 over 60 min, threshold based on vol_ratio 0.47x): 1 times
+   - 12:05:00 @ $68.0100 (Unknown, 0.0%)
+
+Low volume stock (total 350,577 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 12:06:00 @ $68.4400 (Unknown, 0.0%)
+
+Low volume stock (total 355,976 < 500,000 over 60 min, threshold based on vol_ratio 0.94x): 1 times
+   - 12:07:00 @ $66.2000 (Unknown, 0.0%)
+
+Low volume stock (total 359,251 < 500,000 over 60 min, threshold based on vol_ratio 0.48x): 1 times
+   - 12:08:00 @ $65.0600 (Unknown, 0.0%)
+
+Low volume stock (total 368,141 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 12:09:00 @ $63.1600 (Unknown, 0.0%)
+
+Low volume stock (total 366,907 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 12:10:00 @ $63.0000 (Unknown, 0.0%)
+
+Low volume stock (total 368,952 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 12:11:00 @ $64.5200 (Unknown, 0.0%)
+
+Low volume stock (total 374,328 < 500,000 over 60 min, threshold based on vol_ratio 0.73x): 1 times
+   - 12:14:00 @ $65.3200 (Unknown, 0.0%)
+
+Low volume stock (total 373,498 < 500,000 over 60 min, threshold based on vol_ratio 0.49x): 1 times
+   - 12:15:00 @ $66.0000 (Unknown, 0.0%)
+
+Low volume stock (total 376,509 < 500,000 over 60 min, threshold based on vol_ratio 0.49x): 1 times
+   - 12:16:00 @ $64.9700 (Unknown, 0.0%)
+
+Low volume stock (total 378,751 < 500,000 over 60 min, threshold based on vol_ratio 0.37x): 1 times
+   - 12:17:00 @ $63.5500 (Unknown, 0.0%)
+
+Low volume stock (total 374,128 < 500,000 over 60 min, threshold based on vol_ratio 0.13x): 1 times
+   - 12:18:00 @ $63.6000 (Unknown, 0.0%)
+
+Low volume stock (total 375,169 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 12:19:00 @ $63.0100 (Unknown, 0.0%)
+
+Low volume stock (total 378,135 < 500,000 over 60 min, threshold based on vol_ratio 0.75x): 1 times
+   - 12:21:00 @ $63.0000 (Unknown, 0.0%)
+
+Low volume stock (total 378,645 < 500,000 over 60 min, threshold based on vol_ratio 0.57x): 1 times
+   - 12:22:00 @ $63.0100 (Unknown, 0.0%)
+
+Low volume stock (total 389,935 < 400,000 over 60 min, threshold based on vol_ratio 2.10x): 1 times
+   - 12:23:00 @ $58.5300 (Unknown, 0.0%)
+
+Confidence 65.0% < 72% required: 1 times
+   - 12:24:00 @ $58.0000 (Unknown, 0.0%)
+
+Low volume stock (total 407,358 < 500,000 over 60 min, threshold based on vol_ratio 0.85x): 1 times
+   - 12:25:00 @ $58.3300 (Unknown, 0.0%)
+
+Low volume stock (total 408,677 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 12:26:00 @ $58.9800 (Unknown, 0.0%)
+
+Low volume stock (total 412,604 < 500,000 over 60 min, threshold based on vol_ratio 1.12x): 1 times
+   - 12:27:00 @ $59.2200 (Unknown, 0.0%)
+
+Low volume stock (total 416,498 < 500,000 over 60 min, threshold based on vol_ratio 0.75x): 1 times
+   - 12:28:00 @ $59.6500 (Unknown, 0.0%)
+
+Low volume stock (total 416,966 < 500,000 over 60 min, threshold based on vol_ratio 0.48x): 1 times
+   - 12:29:00 @ $60.4500 (Unknown, 0.0%)
+
+Low volume stock (total 417,239 < 500,000 over 60 min, threshold based on vol_ratio 0.29x): 1 times
+   - 12:30:00 @ $60.0000 (Unknown, 0.0%)
+
+Low volume stock (total 415,665 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 12:31:00 @ $59.3200 (Unknown, 0.0%)
+
+Low volume stock (total 416,215 < 500,000 over 60 min, threshold based on vol_ratio 0.40x): 1 times
+   - 12:32:00 @ $59.0100 (Unknown, 0.0%)
+
+Low volume stock (total 413,969 < 500,000 over 60 min, threshold based on vol_ratio 0.45x): 1 times
+   - 12:35:00 @ $58.5200 (Unknown, 0.0%)
+
+Low volume stock (total 415,038 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 12:36:00 @ $58.4700 (Unknown, 0.0%)
+
+Low volume stock (total 413,617 < 500,000 over 60 min, threshold based on vol_ratio 0.57x): 1 times
+   - 12:37:00 @ $58.0000 (Unknown, 0.0%)
+
+Low volume stock (total 415,014 < 500,000 over 60 min, threshold based on vol_ratio 0.69x): 1 times
+   - 12:38:00 @ $58.2400 (Unknown, 0.0%)
+
+Low volume stock (total 415,409 < 500,000 over 60 min, threshold based on vol_ratio 0.30x): 1 times
+   - 12:39:00 @ $58.9600 (Unknown, 0.0%)
+
+Low volume stock (total 408,397 < 500,000 over 60 min, threshold based on vol_ratio 0.22x): 1 times
+   - 12:40:00 @ $59.0000 (Unknown, 0.0%)
+
+Low volume stock (total 406,849 < 500,000 over 60 min, threshold based on vol_ratio 1.02x): 1 times
+   - 12:46:00 @ $60.4400 (Unknown, 0.0%)
+
+Low volume stock (total 406,724 < 500,000 over 60 min, threshold based on vol_ratio 0.59x): 1 times
+   - 12:47:00 @ $62.0300 (Unknown, 0.0%)
+
+Low volume stock (total 412,983 < 450,000 over 60 min, threshold based on vol_ratio 1.88x): 1 times
+   - 12:48:00 @ $63.2300 (Unknown, 0.0%)
+
+Low volume stock (total 412,911 < 500,000 over 60 min, threshold based on vol_ratio 0.36x): 1 times
+   - 12:49:00 @ $62.6000 (Unknown, 0.0%)
+
+Low volume stock (total 413,774 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 12:50:00 @ $62.4600 (Unknown, 0.0%)
+
+Low volume stock (total 414,088 < 500,000 over 60 min, threshold based on vol_ratio 0.86x): 1 times
+   - 12:51:00 @ $62.9300 (Unknown, 0.0%)
+
+Low volume stock (total 418,977 < 450,000 over 60 min, threshold based on vol_ratio 1.90x): 1 times
+   - 12:52:00 @ $66.0000 (Unknown, 0.0%)
+
+Low volume stock (avg 3,290 < 50,000 required): 1 times
+   - 12:53:00 @ $65.5000 (Unknown, 0.0%)
+
+Low volume stock (total 393,743 < 450,000 over 60 min, threshold based on vol_ratio 1.76x): 1 times
+   - 12:54:00 @ $64.0100 (Unknown, 0.0%)
+
+Low volume stock (total 378,139 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 12:55:00 @ $65.5000 (Unknown, 0.0%)
+
+Low volume stock (total 366,101 < 500,000 over 60 min, threshold based on vol_ratio 0.58x): 1 times
+   - 12:56:00 @ $64.2500 (Unknown, 0.0%)
+
+Low volume stock (total 353,151 < 500,000 over 60 min, threshold based on vol_ratio 0.90x): 1 times
+   - 12:59:00 @ $62.9000 (Unknown, 0.0%)
+
+Low volume stock (total 344,798 < 500,000 over 60 min, threshold based on vol_ratio 1.12x): 1 times
+   - 13:00:00 @ $65.7600 (Unknown, 0.0%)
+
+Low volume stock (total 341,774 < 500,000 over 60 min, threshold based on vol_ratio 0.65x): 1 times
+   - 13:01:00 @ $66.0000 (Unknown, 0.0%)
+
+Low volume stock (total 330,944 < 500,000 over 60 min, threshold based on vol_ratio 0.61x): 1 times
+   - 13:02:00 @ $64.9100 (Unknown, 0.0%)
+
+Low volume stock (total 317,881 < 500,000 over 60 min, threshold based on vol_ratio 0.16x): 1 times
+   - 13:03:00 @ $64.0500 (Unknown, 0.0%)
+
+Low volume stock (total 316,554 < 450,000 over 60 min, threshold based on vol_ratio 1.65x): 1 times
+   - 13:05:00 @ $66.3300 (Unknown, 0.0%)
+
+Low volume stock (total 313,527 < 500,000 over 60 min, threshold based on vol_ratio 1.06x): 1 times
+   - 13:06:00 @ $66.0100 (Unknown, 0.0%)
+
+Low volume stock (total 314,182 < 500,000 over 60 min, threshold based on vol_ratio 0.77x): 1 times
+   - 13:07:00 @ $68.3600 (Unknown, 0.0%)
+
+Low volume stock (total 319,847 < 400,000 over 60 min, threshold based on vol_ratio 2.96x): 1 times
+   - 13:08:00 @ $67.4100 (Unknown, 0.0%)
+
+Low volume stock (total 311,449 < 500,000 over 60 min, threshold based on vol_ratio 0.35x): 1 times
+   - 13:09:00 @ $68.4900 (Unknown, 0.0%)
+
+Low volume stock (total 295,215 < 500,000 over 60 min, threshold based on vol_ratio 0.94x): 1 times
+   - 13:10:00 @ $65.9300 (Unknown, 0.0%)
+
+Low volume stock (total 286,134 < 500,000 over 60 min, threshold based on vol_ratio 0.39x): 1 times
+   - 13:11:00 @ $65.9800 (Unknown, 0.0%)
+
+Low volume stock (total 281,933 < 500,000 over 60 min, threshold based on vol_ratio 0.33x): 1 times
+   - 13:12:00 @ $67.0700 (Unknown, 0.0%)
+
+Low volume stock (total 267,779 < 500,000 over 60 min, threshold based on vol_ratio 0.60x): 1 times
+   - 13:13:00 @ $66.5600 (Unknown, 0.0%)
+
+Low volume stock (total 258,024 < 500,000 over 60 min, threshold based on vol_ratio 0.86x): 1 times
+   - 13:14:00 @ $64.5300 (Unknown, 0.0%)
+
+Low volume stock (total 245,813 < 500,000 over 60 min, threshold based on vol_ratio 0.21x): 1 times
+   - 13:15:00 @ $64.5300 (Unknown, 0.0%)
+
+Low volume stock (total 245,879 < 450,000 over 60 min, threshold based on vol_ratio 1.83x): 1 times
+   - 13:16:00 @ $69.0000 (Unknown, 0.0%)
+
+Low volume stock (total 237,946 < 500,000 over 60 min, threshold based on vol_ratio 0.80x): 1 times
+   - 13:17:00 @ $67.7300 (Unknown, 0.0%)
+
+Low volume stock (total 243,450 < 300,000 over 60 min, threshold based on vol_ratio 3.01x): 1 times
+   - 13:18:00 @ $70.8600 (Unknown, 0.0%)
+
+Low volume stock (total 265,185 < 300,000 over 60 min, threshold based on vol_ratio 5.88x): 1 times
+   - 13:19:00 @ $75.0400 (Unknown, 0.0%)
+
+Low volume stock (total 267,933 < 400,000 over 60 min, threshold based on vol_ratio 2.25x): 1 times
+   - 13:20:00 @ $71.5400 (Unknown, 0.0%)
+
+Low volume stock (total 265,860 < 500,000 over 60 min, threshold based on vol_ratio 0.44x): 1 times
+   - 13:21:00 @ $70.4500 (Unknown, 0.0%)
+
+Low volume stock (total 261,116 < 500,000 over 60 min, threshold based on vol_ratio 1.17x): 1 times
+   - 13:22:00 @ $73.9400 (Unknown, 0.0%)
+
+Low volume stock (total 264,564 < 500,000 over 60 min, threshold based on vol_ratio 1.09x): 1 times
+   - 13:23:00 @ $73.5000 (Unknown, 0.0%)
+
+Low volume stock (total 264,469 < 500,000 over 60 min, threshold based on vol_ratio 0.64x): 1 times
+   - 13:24:00 @ $73.0000 (Unknown, 0.0%)
+
+Low volume stock (total 265,020 < 500,000 over 60 min, threshold based on vol_ratio 1.16x): 1 times
+   - 13:25:00 @ $74.5800 (Unknown, 0.0%)
+
+Low volume stock (total 268,451 < 500,000 over 60 min, threshold based on vol_ratio 1.26x): 1 times
+   - 13:26:00 @ $77.1900 (Unknown, 0.0%)
+
+Low volume stock (total 272,480 < 500,000 over 60 min, threshold based on vol_ratio 1.31x): 1 times
+   - 13:27:00 @ $76.0900 (Unknown, 0.0%)
+
+Low volume stock (total 291,896 < 300,000 over 60 min, threshold based on vol_ratio 3.35x): 1 times
+   - 13:28:00 @ $81.0000 (Unknown, 0.0%)
+
+Low volume stock (total 300,335 < 500,000 over 60 min, threshold based on vol_ratio 1.33x): 1 times
+   - 13:29:00 @ $80.4300 (Unknown, 0.0%)
+
+Low volume stock (total 320,203 < 400,000 over 60 min, threshold based on vol_ratio 2.79x): 1 times
+   - 13:30:00 @ $83.9500 (Unknown, 0.0%)
+
+Low volume stock (total 326,215 < 500,000 over 60 min, threshold based on vol_ratio 1.28x): 1 times
+   - 13:31:00 @ $84.5400 (Unknown, 0.0%)
+
+
+================================================================================
+FINAL ANALYSIS
+================================================================================
+
+[X] NO ENTRY SIGNALS FOUND - This explains why no trades were placed
+   Possible reasons:
+   1. No patterns detected
+   2. Patterns detected but rejected (check rejection reasons above)
+   3. Technical indicators not aligned
+   4. Price/volume criteria not met
