@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import pytz
-from analysis.pattern_detector import PatternDetector, PatternSignal
+from ..analysis.pattern_detector import PatternDetector, PatternSignal
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,7 @@ class ActivePosition:
     partial_profit_taken_second: bool = False  # Track if second partial profit was taken (25% at +7%)
     original_shares: float = 0.0  # Original shares before partial exit
     is_slow_mover_entry: bool = False  # Flag to mark slow mover entries (uses different exit logic)
+    is_surge_entry: bool = False  # Flag to mark surge entries (uses different exit logic)
 
 
 class RealtimeTrader:
@@ -101,7 +102,8 @@ class RealtimeTrader:
                  min_entry_price_increase: float = 5.5,  # BALANCED: 5.5% - good quality setups
                  trailing_stop_pct: float = 2.5,  # REFINED: 2.5% - tighter stops, cut losses faster
                  profit_target_pct: float = 8.0,  # REFINED: 8% - realistic profit target
-                 data_api=None):  # DataAPI instance for multi-timeframe analysis
+                 data_api=None,  # DataAPI instance for multi-timeframe analysis
+                 rejection_callback=None):  # Callback function to save rejections to database
         """
         Args:
             min_confidence: Minimum pattern confidence to enter trade (0-1)
@@ -116,12 +118,24 @@ class RealtimeTrader:
         self.trailing_stop_pct = trailing_stop_pct
         self.profit_target_pct = profit_target_pct
         self.data_api = data_api  # For multi-timeframe analysis
+        self.rejection_callback = rejection_callback  # Callback to save rejections to database
         
         self.active_positions: Dict[str, ActivePosition] = {}
         self.trade_history: List[TradeSignal] = []
         self.last_rejection_reasons: Dict[str, List[str]] = {}  # Track rejection reasons per ticker
         self.last_fast_mover_status: Dict[str, Dict[str, float]] = {}  # Track fast mover status per ticker
         self.daily_macd_cache: Dict[str, Dict] = {}  # Cache daily MACD values
+        
+        # Surge detection configuration
+        self.surge_detection_enabled: bool = True
+        self.surge_min_volume: int = 50000
+        self.surge_min_volume_ratio: float = 100.0
+        self.surge_min_price_increase: float = 30.0
+        self.surge_continuation_min_volume: int = 500000
+        self.surge_exit_min_hold_minutes: int = 5
+        self.surge_exit_max_hold_minutes: int = 30
+        self.surge_exit_trailing_stop_pct: float = 10.0
+        self.surge_exit_hard_stop_pct: float = 12.0
     
     def analyze_data(self, df: pd.DataFrame, ticker: str, current_price: Optional[float] = None) -> Tuple[Optional[TradeSignal], List[TradeSignal]]:
         """
@@ -137,7 +151,13 @@ class RealtimeTrader:
             - entry_signal: New entry opportunity (None if none found)
             - exit_signals: List of exit signals for active positions
         """
-        if len(df) < 50:
+        # CRITICAL FIX: Allow surge detection with minimal data (4 bars)
+        # The original 50-bar requirement was blocking early morning surges
+        # Surge detection needs current_idx >= 3, which means at least 4 bars total
+        # This allows catching surges at 8:46 AM when we only have 4 bars of data
+        min_required_bars = 4 if self.surge_detection_enabled else 50
+        
+        if len(df) < min_required_bars:
             return None, []
         
         # Ensure timestamp is datetime
@@ -153,14 +173,270 @@ class RealtimeTrader:
         # Check for new entry signals (only if no active position)
         entry_signal = None
         if ticker not in self.active_positions:
-            # FIRST: Try original entry logic
-            entry_signal = self._check_entry_signal(df, ticker)
+            # PRIORITY 0: SURGE DETECTION - Check for surges with minimal data (4 bars)
+            # This allows catching surges even when we don't have enough data for full pattern detection
+            # Surge detection needs current_idx >= 3, which means at least 4 bars total
+            # This is critical for stocks that suddenly surge without much trading history (e.g., 8:46 AM)
+            if self.surge_detection_enabled and len(df) >= 4:
+                # Calculate basic indicators for surge detection (minimal requirements)
+                df_with_indicators = self.pattern_detector.calculate_indicators(df)
+                if len(df_with_indicators) >= 5:
+                    current_idx = len(df_with_indicators) - 1
+                    surge_signal = self._detect_price_volume_surge(df_with_indicators, current_idx, ticker)
+                    if surge_signal:
+                        # Surge detected - create entry signal immediately
+                        current = df_with_indicators.iloc[current_idx]
+                        current_price = current.get('close', 0)
+                        current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+                        if not pd.api.types.is_datetime64_any_dtype(type(current_time)):
+                            current_time = datetime.now()
+                        
+                        # Minimal validation for surge trades
+                        if current_price >= 0.50:  # Price filter
+                            # Quick reverse split check (only if we have enough data)
+                            reverse_split_check_passed = True
+                            if current_idx >= 5:
+                                prev_5_prices = df_with_indicators.iloc[current_idx-5:current_idx]['close'].values
+                                if len(prev_5_prices) > 0 and current_price > max(prev_5_prices) * 3:
+                                    # Price more than 3x recent prices - likely reverse split
+                                    reverse_split_check_passed = False
+                                    logger.warning(f"[{ticker}] SURGE REJECTED: Possible reverse split (price ${current_price:.4f} > 3x recent max ${max(prev_5_prices):.4f})")
+                            
+                            # Basic price above recent low check (only if we have enough data)
+                            dead_cat_bounce_check_passed = True
+                            if current_idx >= 10:
+                                recent_low = df_with_indicators.iloc[max(0, current_idx-10):current_idx]['low'].min()
+                                if current_price < recent_low * 0.8:
+                                    dead_cat_bounce_check_passed = False
+                                    logger.warning(f"[{ticker}] SURGE REJECTED: Price ${current_price:.4f} below recent low ${recent_low:.4f} (possible dead cat bounce)")
+                            
+                            # Surge validated if all checks passed
+                            if reverse_split_check_passed and dead_cat_bounce_check_passed:
+                                # Surge validated - create entry signal
+                                surge_type = surge_signal['surge_type']
+                                surge_confidence = surge_signal['confidence']
+                                
+                                # Calculate target and stop loss for surge trades
+                                target_price = current_price * 1.25  # 25% target
+                                stop_loss = current_price * (1 - self.surge_exit_hard_stop_pct / 100)  # 12% stop
+                                
+                                entry_signal = TradeSignal(
+                                    signal_type='entry',
+                                    ticker=ticker,
+                                    timestamp=current_time,
+                                    price=current_price,
+                                    pattern_name='PRICE_VOLUME_SURGE',
+                                    confidence=surge_confidence,
+                                    reason=f"{surge_type}: Price +{surge_signal['price_change_pct']:.1f}%, Volume {surge_signal['volume_ratio']:.1f}x",
+                                    target_price=target_price,
+                                    stop_loss=stop_loss,
+                                    indicators={
+                                        'surge_type': surge_type,
+                                        'price_change_pct': surge_signal['price_change_pct'],
+                                        'volume_ratio': surge_signal['volume_ratio'],
+                                        'baseline_price': surge_signal['baseline_price'],
+                                        'baseline_volume': surge_signal['baseline_volume']
+                                    }
+                                )
+                                
+                                logger.info(f"[{ticker}] SURGE ENTRY SIGNAL (EARLY): {surge_type} @ ${current_price:.4f} (Confidence: {surge_confidence*100:.0f}%)")
+            
+            # FIRST: Try original entry logic (requires 30+ bars)
+            if entry_signal is None:
+                entry_signal = self._check_entry_signal(df, ticker)
             
             # SECOND: If original logic found no entry, try slow mover logic
             if entry_signal is None:
                 entry_signal = self._check_slow_mover_entry_signal(df, ticker)
         
         return entry_signal, exit_signals
+    
+    def _calculate_baseline_metrics(self, df: pd.DataFrame, current_idx: int, lookback_minutes: int = 15) -> Optional[Dict]:
+        """
+        Calculate baseline price and volume from recent history
+        
+        Args:
+            df: DataFrame with price/volume data
+            current_idx: Current index (exclude from baseline)
+            lookback_minutes: Minutes to look back (default 15)
+        
+        Returns:
+            Dict with avg_price, avg_volume, min_volume, periods or None if insufficient data
+        """
+        # Get data from lookback_minutes ago to current_idx-1
+        start_idx = max(0, current_idx - lookback_minutes)
+        end_idx = current_idx  # Exclude current
+        
+        if start_idx >= end_idx:
+            # Not enough history, use all available
+            baseline_df = df.iloc[:current_idx]
+        else:
+            baseline_df = df.iloc[start_idx:end_idx]
+        
+        if len(baseline_df) == 0:
+            return None
+        
+        avg_price = baseline_df['close'].mean()
+        avg_volume = baseline_df['volume'].mean()
+        min_volume = baseline_df['volume'].min()
+        
+        # Handle zero/very low volume
+        if avg_volume < 100:
+            avg_volume = 100  # Minimum baseline
+        if min_volume < 10:
+            min_volume = 10
+        
+        return {
+            'avg_price': avg_price,
+            'avg_volume': avg_volume,
+            'min_volume': min_volume,
+            'periods': len(baseline_df)
+        }
+    
+    def _detect_price_volume_surge(self, df: pd.DataFrame, current_idx: int, ticker: str) -> Optional[Dict]:
+        """
+        Detect massive price and volume surges
+        Requires only 20 bars of data (vs 50 for full pattern detection)
+        
+        Returns:
+            Dict with surge details if detected, None otherwise
+        """
+        if not self.surge_detection_enabled:
+            return None
+        
+        # Surge detection only needs 3 bars (much less than pattern detection's 50 bars)
+        # This allows catching surges early even with limited historical data
+        # For stocks with sudden surges, we may not have much history
+        # Minimum 3 bars allows: [baseline1, baseline2, baseline3, SURGE]
+        if current_idx < 3:  # Minimum 3 bars for basic surge detection
+            return None
+        
+        current = df.iloc[current_idx]
+        current_price = current.get('close', 0)
+        current_volume = current.get('volume', 0)
+        
+        # Calculate baseline - use available data (minimum 3 bars, prefer 10-15)
+        # For limited data, use shorter lookback to catch surges early
+        # This is critical for stocks that suddenly surge without much trading history
+        available_bars = current_idx
+        if available_bars >= 15:
+            lookback_minutes = 15
+        elif available_bars >= 10:
+            lookback_minutes = 10
+        elif available_bars >= 3:
+            lookback_minutes = available_bars  # Use all available data (minimum 3 bars)
+        else:
+            return None  # Not enough data
+        
+        baseline = self._calculate_baseline_metrics(df, current_idx, lookback_minutes=lookback_minutes)
+        if not baseline:
+            return None
+        
+        # Calculate changes
+        price_change_pct = ((current_price - baseline['avg_price']) / baseline['avg_price']) * 100
+        volume_ratio = current_volume / baseline['avg_volume'] if baseline['avg_volume'] > 0 else 0
+        
+        # Debug logging for surge detection
+        logger.debug(f"[{ticker}] Surge check at idx {current_idx}: price=${current_price:.4f} (baseline=${baseline['avg_price']:.4f}, +{price_change_pct:.1f}%), vol={current_volume:,.0f} (baseline={baseline['avg_volume']:.0f}, {volume_ratio:.1f}x)")
+        
+        # PRIMARY SURGE: Extreme volume and price increase
+        is_primary_surge = (
+            current_volume >= self.surge_min_volume and  # Absolute minimum
+            (
+                (volume_ratio >= self.surge_min_volume_ratio and price_change_pct >= self.surge_min_price_increase) or  # 100x volume + 30% price
+                (current_volume >= 200000 and price_change_pct >= 20)  # 200K volume + 20% price
+            )
+        )
+        
+        if not is_primary_surge and current_volume >= 50000:
+            logger.debug(f"[{ticker}] Surge not detected: vol_ok={current_volume >= self.surge_min_volume}, vol_ratio_ok={volume_ratio >= self.surge_min_volume_ratio}, price_ok={price_change_pct >= self.surge_min_price_increase}, alt_vol_ok={current_volume >= 200000}, alt_price_ok={price_change_pct >= 20}")
+        
+        # CONTINUATION SURGE: High volume continuation
+        is_continuation_surge = False
+        price_increase_pct = 0
+        volume_increase_pct = 0
+        prev_5min_avg_price = 0
+        prev_5min_avg_volume = 0
+        if not is_primary_surge and current_idx >= 5:
+            prev_5min_avg_volume = df.iloc[max(0, current_idx-5):current_idx]['volume'].mean()
+            prev_5min_avg_price = df.iloc[max(0, current_idx-5):current_idx]['close'].mean()
+            
+            volume_increase_pct = ((current_volume - prev_5min_avg_volume) / prev_5min_avg_volume) * 100 if prev_5min_avg_volume > 0 else 0
+            price_increase_pct = ((current_price - prev_5min_avg_price) / prev_5min_avg_price) * 100 if prev_5min_avg_price > 0 else 0
+            
+            prev_volume = df.iloc[current_idx-1].get('volume', 0) if current_idx > 0 else 0
+            
+            is_continuation_surge = (
+                current_volume >= self.surge_continuation_min_volume and
+                volume_increase_pct >= 50 and
+                current_volume >= (prev_volume * 2) and
+                (
+                    price_increase_pct >= 10 or
+                    (price_increase_pct >= 5 and current_volume >= self.surge_continuation_min_volume)
+                )
+            )
+        
+        # CRITICAL: Validate uptrend - ensure price is actually going UP, not down
+        # This prevents entering on pullbacks or downtrends after a surge
+        is_uptrend = True
+        uptrend_reason = ""
+        
+        # Check 1: Current price should be at or near recent high (within 5% tolerance)
+        if current_idx >= 5:
+            # Check last 5 minutes for recent high
+            recent_5min_prices = df.iloc[max(0, current_idx-5):current_idx]['close'].values
+            if len(recent_5min_prices) >= 3:
+                recent_high = max(recent_5min_prices)
+                # Reject if current price is more than 5% below recent high (significant pullback)
+                if current_price < recent_high * 0.95:
+                    is_uptrend = False
+                    uptrend_reason = f"Price ${current_price:.4f} is {((recent_high - current_price) / recent_high * 100):.1f}% below recent high ${recent_high:.4f}"
+        
+        # Check 2: Ensure price is not declining from previous bar (significant drop)
+        if is_uptrend and current_idx >= 1:
+            prev_price = df.iloc[current_idx-1].get('close', 0)
+            if prev_price > 0:
+                price_change_from_prev = ((current_price - prev_price) / prev_price) * 100
+                # Reject if price dropped more than 2% from previous bar
+                if price_change_from_prev < -2.0:
+                    is_uptrend = False
+                    uptrend_reason = f"Price ${current_price:.4f} dropped {abs(price_change_from_prev):.1f}% from previous ${prev_price:.4f}"
+        
+        # Check 3: For continuation surge, ensure price is actually increasing (not just high volume on decline)
+        if is_uptrend and is_continuation_surge:
+            if price_increase_pct <= 0:
+                is_uptrend = False
+                uptrend_reason = f"Continuation surge rejected: Price ${current_price:.4f} is down {abs(price_increase_pct):.1f}% from 5-min avg ${prev_5min_avg_price:.4f}"
+        
+        if not is_uptrend:
+            logger.warning(f"[{ticker}] SURGE REJECTED (downtrend): {uptrend_reason}")
+        
+        if is_primary_surge and is_uptrend:
+            logger.info(f"[{ticker}] PRIMARY SURGE DETECTED: Price ${current_price:.4f} (+{price_change_pct:.1f}%), Volume {current_volume:,.0f} ({volume_ratio:.1f}x baseline)")
+            return {
+                'surge_type': 'PRIMARY_SURGE',
+                'confidence': 0.85,
+                'baseline_price': baseline['avg_price'],
+                'baseline_volume': baseline['avg_volume'],
+                'current_price': current_price,
+                'current_volume': current_volume,
+                'price_change_pct': price_change_pct,
+                'volume_ratio': volume_ratio
+            }
+        elif is_continuation_surge and is_uptrend:
+            logger.info(f"[{ticker}] CONTINUATION SURGE DETECTED: Price ${current_price:.4f} (+{price_increase_pct:.1f}%), Volume {current_volume:,.0f} ({volume_increase_pct:.1f}% increase)")
+            return {
+                'surge_type': 'CONTINUATION_SURGE',
+                'confidence': 0.80,
+                'baseline_price': prev_5min_avg_price,
+                'baseline_volume': prev_5min_avg_volume,
+                'current_price': current_price,
+                'current_volume': current_volume,
+                'price_change_pct': price_increase_pct,
+                'volume_ratio': current_volume / prev_5min_avg_volume if prev_5min_avg_volume > 0 else 0
+            }
+        
+        return None
     
     def _check_entry_signal(self, df: pd.DataFrame, ticker: str) -> Optional[TradeSignal]:
         """Check for valid entry signals"""
@@ -180,50 +456,148 @@ class RealtimeTrader:
             self.last_rejection_reasons[ticker] = [f"Price ${current_price:.4f} below minimum $0.50"]
             return None
         
-        # PRIORITY 0.5: Minimum volume filter - reject low volume stocks (time-based thresholds)
-        # FIX: Use time-based volume thresholds (100K-500K based on time of day)
-        current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
-        et = pytz.timezone('US/Eastern')
-        if current_time.tz is None:
-            current_time = et.localize(current_time)
+        # PRIORITY 0.25: SURGE DETECTION - Check for massive price/volume surges BEFORE normal validation
+        # This allows immediate entry for explosive moves without waiting for pattern confirmation
+        surge_signal = self._detect_price_volume_surge(df_with_indicators, current_idx, ticker)
+        if surge_signal:
+            # Surge detected - create entry signal immediately with minimal validation
+            surge_type = surge_signal['surge_type']
+            surge_confidence = surge_signal['confidence']
+            
+            # Minimal validation for surge trades
+            # 1. Price already checked (>= $0.50)
+            # 2. Quick reverse split check
+            if current_idx >= 5:
+                prev_5_prices = df_with_indicators.iloc[current_idx-5:current_idx]['close'].values
+                if len(prev_5_prices) > 0 and current_price > max(prev_5_prices) * 3:
+                    # Price more than 3x recent prices - likely reverse split
+                    logger.warning(f"[{ticker}] SURGE REJECTED: Possible reverse split (price ${current_price:.4f} > 3x recent max ${max(prev_5_prices):.4f})")
+                    return None
+            
+            # 3. Basic price above recent low check (avoid dead cat bounce)
+            if current_idx >= 10:
+                recent_low = df_with_indicators.iloc[max(0, current_idx-10):current_idx]['low'].min()
+                if current_price < recent_low * 0.8:
+                    logger.warning(f"[{ticker}] SURGE REJECTED: Price ${current_price:.4f} below recent low ${recent_low:.4f} (possible dead cat bounce)")
+                    return None
+            
+            # Surge validated - create entry signal
+            current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+            if not pd.api.types.is_datetime64_any_dtype(type(current_time)):
+                current_time = datetime.now()
+            
+            # Calculate target and stop loss for surge trades
+            # More aggressive targets for surges
+            target_price = current_price * 1.25  # 25% target
+            stop_loss = current_price * (1 - self.surge_exit_hard_stop_pct / 100)  # 12% stop
+            
+            entry_signal = TradeSignal(
+                signal_type='entry',
+                ticker=ticker,
+                timestamp=current_time,
+                price=current_price,
+                pattern_name='PRICE_VOLUME_SURGE',
+                confidence=surge_confidence,
+                reason=f"{surge_type}: Price +{surge_signal['price_change_pct']:.1f}%, Volume {surge_signal['volume_ratio']:.1f}x",
+                target_price=target_price,
+                stop_loss=stop_loss,
+                indicators={
+                    'surge_type': surge_type,
+                    'price_change_pct': surge_signal['price_change_pct'],
+                    'volume_ratio': surge_signal['volume_ratio'],
+                    'baseline_price': surge_signal['baseline_price'],
+                    'baseline_volume': surge_signal['baseline_volume']
+                }
+            )
+            
+            logger.info(f"[{ticker}] SURGE ENTRY SIGNAL: {surge_type} @ ${current_price:.4f} (Confidence: {surge_confidence*100:.0f}%)")
+            return entry_signal
+        
+        # PRIORITY 0.5: Minimum volume filter - reject low volume and extremely slow moving stocks
+        # ENHANCED: Use calculated volume thresholds based on stock's historical average volume
+        # Purpose: Filter out low-volume/no-movement stocks (liquidity filter)
+        
+        # Calculate historical average volume (use longer period for better baseline)
+        if len(df_with_indicators) >= 100:
+            historical_avg_volume = df_with_indicators['volume'].tail(100).mean()
+        elif len(df_with_indicators) >= 50:
+            historical_avg_volume = df_with_indicators['volume'].tail(50).mean()
         else:
-            current_time = current_time.astimezone(et)
+            historical_avg_volume = df_with_indicators['volume'].mean() if len(df_with_indicators) > 0 else 0
         
-        hour = current_time.hour
-        
-        # Time-based volume thresholds
-        if hour < 6:  # 4-6 AM
-            min_daily_volume = 100000  # 100K
-        elif hour < 8:  # 6-8 AM
-            min_daily_volume = 200000  # 200K
-        elif hour < 10:  # 8-10 AM
-            min_daily_volume = 300000  # 300K
-        else:  # 10 AM+
-            min_daily_volume = 500000  # 500K
-        
-        # Check total volume over recent periods (simulating daily volume check)
-        if len(df_with_indicators) >= 60:
-            recent_volumes = df_with_indicators['volume'].tail(60).values
-            total_volume_60min = recent_volumes.sum()
-            if total_volume_60min < min_daily_volume:
-                self.last_rejection_reasons[ticker] = [f"Low volume stock (total {total_volume_60min:,.0f} < {min_daily_volume:,.0f} over 60 min, threshold for hour {hour})"]
-                return None
-        elif len(df_with_indicators) >= 20:
-            # If less than 60 minutes, check 20-minute total and extrapolate
-            recent_volumes = df_with_indicators['volume'].tail(20).values
-            total_volume_20min = recent_volumes.sum()
-            # Extrapolate to 60 minutes: need at least min_daily_volume/3 over 20 min
-            min_volume_20min = min_daily_volume // 3
-            if total_volume_20min < min_volume_20min:
-                self.last_rejection_reasons[ticker] = [f"Low volume stock (total {total_volume_20min:,.0f} < {min_volume_20min:,.0f} over 20 min, extrapolated, threshold for hour {hour})"]
-                return None
+        # Calculate volume ratio (current vs historical average)
+        current_volume = current.get('volume', 0)
+        if len(df_with_indicators) >= 100:
+            volume_ratio_long = current_volume / historical_avg_volume if historical_avg_volume > 0 else 0
         else:
-            # If very little data, check current volume (should be at least 10K for single bar)
-            current_volume = current.get('volume', 0)
-            min_current_volume = 10000
-            if current_volume < min_current_volume:
-                self.last_rejection_reasons[ticker] = [f"Low volume stock ({current_volume:,.0f} < {min_current_volume:,.0f} required)"]
-                return None
+            avg_volume_20 = df_with_indicators['volume'].tail(20).mean() if len(df_with_indicators) >= 20 else historical_avg_volume
+            volume_ratio_long = current_volume / avg_volume_20 if avg_volume_20 > 0 else 0
+        
+        # PRIORITY: Use volume ratio as primary indicator
+        # If volume ratio is exceptional (>= 5x), skip daily volume check (stock is clearly moving)
+        if volume_ratio_long >= 5.0:
+            logger.debug(f"[{ticker}] EXCEPTIONAL VOLUME: Volume ratio {volume_ratio_long:.2f}x >= 5x, skipping daily volume check")
+            # Skip daily volume check - exceptional volume ratio indicates sufficient liquidity
+        else:
+            # For stocks with moderate volume ratio, check daily volume to filter out low-volume stocks
+            # Calculate threshold based on historical average and time of day
+            current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+            et = pytz.timezone('US/Eastern')
+            if current_time.tz is None:
+                current_time = et.localize(current_time)
+            else:
+                current_time = current_time.astimezone(et)
+            
+            hour = current_time.hour
+            
+            # Calculate minimum daily volume based on historical average and time of day
+            # Early morning: Lower threshold (volume hasn't accumulated yet)
+            # Regular hours: Higher threshold (full trading day)
+            # After-hours: Lower threshold (lower absolute volume but high ratio)
+            
+            if hour < 6:  # 4-6 AM (premarket)
+                # Use 20x historical average (very low threshold for early morning)
+                min_daily_volume = max(historical_avg_volume * 20, 50000)  # At least 50K absolute minimum
+            elif hour < 8:  # 6-8 AM (early morning)
+                # Use 40x historical average
+                min_daily_volume = max(historical_avg_volume * 40, 100000)  # At least 100K absolute minimum
+            elif hour < 10:  # 8-10 AM (mid-morning)
+                # Use 60x historical average
+                min_daily_volume = max(historical_avg_volume * 60, 150000)  # At least 150K absolute minimum
+            elif hour >= 16 and hour < 20:  # After-hours (4 PM - 8 PM)
+                # Use 30x historical average (lower for after-hours)
+                min_daily_volume = max(historical_avg_volume * 30, 100000)  # At least 100K absolute minimum
+                logger.debug(f"[{ticker}] AFTER-HOURS: Using calculated threshold {min_daily_volume:,.0f} (historical avg: {historical_avg_volume:,.0f})")
+            elif hour >= 15 and hour < 16:  # Late-day (3 PM - 4 PM)
+                # Use 50x historical average
+                min_daily_volume = max(historical_avg_volume * 50, 150000)  # At least 150K absolute minimum
+                logger.debug(f"[{ticker}] LATE-DAY: Using calculated threshold {min_daily_volume:,.0f} (historical avg: {historical_avg_volume:,.0f})")
+            else:  # 10 AM - 3 PM (regular hours)
+                # Use 100x historical average (full trading day)
+                min_daily_volume = max(historical_avg_volume * 100, 200000)  # At least 200K absolute minimum
+            
+            # Check total volume over recent periods (simulating daily volume check)
+            if len(df_with_indicators) >= 60:
+                recent_volumes = df_with_indicators['volume'].tail(60).values
+                total_volume_60min = recent_volumes.sum()
+                if total_volume_60min < min_daily_volume:
+                    self.last_rejection_reasons[ticker] = [f"Low volume stock (total {total_volume_60min:,.0f} < {min_daily_volume:,.0f} over 60 min, calculated from historical avg {historical_avg_volume:,.0f})"]
+                    return None
+            elif len(df_with_indicators) >= 20:
+                # If less than 60 minutes, check 20-minute total and extrapolate
+                recent_volumes = df_with_indicators['volume'].tail(20).values
+                total_volume_20min = recent_volumes.sum()
+                # Extrapolate to 60 minutes: need at least min_daily_volume/3 over 20 min
+                min_volume_20min = min_daily_volume // 3
+                if total_volume_20min < min_volume_20min:
+                    self.last_rejection_reasons[ticker] = [f"Low volume stock (total {total_volume_20min:,.0f} < {min_volume_20min:,.0f} over 20 min, extrapolated, calculated from historical avg {historical_avg_volume:,.0f})"]
+                    return None
+            else:
+                # If very little data, check current volume (should be at least 2x historical average)
+                min_current_volume = max(historical_avg_volume * 2, 10000)  # At least 2x average or 10K absolute minimum
+                if current_volume < min_current_volume:
+                    self.last_rejection_reasons[ticker] = [f"Low volume stock ({current_volume:,.0f} < {min_current_volume:,.0f} required, calculated from historical avg {historical_avg_volume:,.0f})"]
+                    return None
         
         # Detect patterns at current point
         lookback = df_with_indicators.iloc[:current_idx + 1]
@@ -236,7 +610,8 @@ class RealtimeTrader:
             logger.debug(f"[{ticker}] No patterns detected")
             return None
         
-        logger.debug(f"[{ticker}] Found {len(signals)} pattern signal(s)")
+        pattern_names = [s.pattern_name for s in signals]
+        logger.info(f"[{ticker}] Found {len(signals)} pattern signal(s): {', '.join(pattern_names)}")
         
         # Clear previous rejection reasons for this ticker
         self.last_rejection_reasons[ticker] = []
@@ -245,7 +620,14 @@ class RealtimeTrader:
         for signal in signals:
             # PRIORITY 0.5: Check entry price is above minimum
             if signal.entry_price < 0.50:
-                self.last_rejection_reasons[ticker].append(f"Entry price ${signal.entry_price:.4f} below minimum $0.50")
+                reason = f"Entry price ${signal.entry_price:.4f} below minimum $0.50"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
                 continue
             
             # PRIORITY 3 FIX: Lower confidence threshold for fast movers and early morning
@@ -266,44 +648,97 @@ class RealtimeTrader:
             
             hour = current_time.hour
             
-            # Adjust confidence threshold
-            effective_min_confidence = self.min_confidence
-            if hour < 10:  # Before 10 AM - use 70% threshold
+            # ENHANCED: Adjust confidence threshold based on time and fast mover status
+            effective_min_confidence = self.min_confidence  # Default 72%
+            
+            # Time-based thresholds
+            if hour < 10:  # Before 10 AM
                 effective_min_confidence = 0.70
                 logger.debug(f"[{ticker}] EARLY MORNING: Using relaxed confidence threshold 70% (hour={hour})")
-            elif is_fast_mover:
-                # For very strong fast movers (high volume + high momentum), lower threshold to 65%
-                if volume_ratio >= 4.0 and price_momentum_5 >= 10.0:  # Very strong
-                    effective_min_confidence = 0.65  # Lower to 65% for explosive moves
-                    logger.debug(f"[{ticker}] FAST MOVER (EXPLOSIVE): Using relaxed confidence threshold 65% (vol={volume_ratio:.2f}x, momentum={price_momentum_5:.1f}%)")
+            elif hour >= 16 and hour < 20:  # After-hours (4 PM - 8 PM)
+                effective_min_confidence = 0.70
+                logger.debug(f"[{ticker}] AFTER-HOURS: Using relaxed confidence threshold 70% (hour={hour})")
+            elif hour >= 15 and hour < 16:  # Late-day (3 PM - 4 PM)
+                effective_min_confidence = 0.70
+                logger.debug(f"[{ticker}] LATE-DAY: Using relaxed confidence threshold 70% (hour={hour})")
+            
+            # PRIORITY FIX: Fast mover thresholds (override time-based if applicable)
+            # Ensure fast mover status is recognized before confidence check
+            if is_fast_mover:
+                # For exceptional volume (10x+), reduce to 68%
+                if volume_ratio >= 10.0:
+                    effective_min_confidence = 0.68
+                    logger.debug(f"[{ticker}] EXCEPTIONAL VOLUME: Volume ratio {volume_ratio:.2f}x >= 10x, using confidence threshold 68%")
+                # For very strong fast movers (6x+ OR momentum >= 10%), reduce to 68%
+                elif volume_ratio >= 6.0 or price_momentum_5 >= 10.0:
+                    effective_min_confidence = 0.68
+                    logger.debug(f"[{ticker}] VERY STRONG FAST MOVER: Vol {volume_ratio:.2f}x OR Momentum {price_momentum_5:.1f}%, using confidence threshold 68%")
+                # For strong fast movers (4x+ OR momentum >= 5%), use 70%
+                elif volume_ratio >= 4.0 or price_momentum_5 >= 5.0:
+                    effective_min_confidence = 0.70
+                    logger.debug(f"[{ticker}] STRONG FAST MOVER: Vol {volume_ratio:.2f}x OR Momentum {price_momentum_5:.1f}%, using confidence threshold 70%")
+                # For regular fast movers (3x+ AND momentum >= 3%), use 70%
                 else:
-                    effective_min_confidence = 0.70  # Lower to 70% for fast movers
-                    logger.debug(f"[{ticker}] FAST MOVER: Using relaxed confidence threshold 70% (vol={volume_ratio:.2f}x, momentum={price_momentum_5:.1f}%)")
+                    effective_min_confidence = 0.70
+                    logger.debug(f"[{ticker}] FAST MOVER: Using confidence threshold 70% (vol={volume_ratio:.2f}x, momentum={price_momentum_5:.1f}%)")
             
             # Check minimum confidence with adjusted threshold
             if signal.confidence < effective_min_confidence:
-                self.last_rejection_reasons[ticker].append(f"Confidence {signal.confidence*100:.1f}% < {effective_min_confidence*100:.0f}% required")
+                reason = f"Confidence {signal.confidence*100:.1f}% < {effective_min_confidence*100:.0f}% required"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
                 continue
             
             # PRIORITY 1: Check for false breakouts FIRST (most important filter)
-            # FIX: Relax false breakout for fast movers with 75%+ confidence OR any pattern with 75%+ confidence
+            # ENHANCED: Skip false breakout for fast movers, high-confidence patterns, and exceptional volume
             skip_false_breakout = False
+            
+            # Skip for high-confidence patterns (75%+)
             if signal.confidence >= 0.75:
-                # Skip false breakout for high-confidence patterns
                 skip_false_breakout = True
                 logger.debug(f"[{ticker}] HIGH CONFIDENCE ({signal.confidence*100:.1f}%): Skipping false breakout check")
+            
+            # Skip for fast movers with strong volume and momentum
+            elif is_fast_mover and volume_ratio >= 2.0 and price_momentum_5 >= 3.0:
+                skip_false_breakout = True
+                logger.debug(f"[{ticker}] FAST MOVER: Skipping false breakout check (vol={volume_ratio:.2f}x, momentum={price_momentum_5:.1f}%)")
+            
+            # Skip for exceptional volume ratio (5x+)
+            elif volume_ratio >= 5.0:
+                skip_false_breakout = True
+                logger.debug(f"[{ticker}] EXCEPTIONAL VOLUME: Skipping false breakout check (vol={volume_ratio:.2f}x)")
+            
+            # Skip for fast movers with 70%+ confidence (fallback)
             elif is_fast_mover and signal.confidence >= 0.70:
-                # Skip false breakout for fast movers with 70%+ confidence
                 skip_false_breakout = True
                 logger.debug(f"[{ticker}] FAST MOVER with 70%+ confidence: Skipping false breakout check")
             
             if not skip_false_breakout and self._is_false_breakout_realtime(df_with_indicators, current_idx, signal):
-                self.last_rejection_reasons[ticker].append("False breakout detected")
+                reason = "False breakout detected"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
                 continue
             
             # PRIORITY 2: Check for reverse split (shouldn't happen in real-time, but check anyway)
             if self._is_reverse_split_realtime(df_with_indicators, current_idx, signal):
-                self.last_rejection_reasons[ticker].append("Reverse split detected")
+                reason = "Reverse split detected"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
                 continue
             
             # PRIORITY 3: Validate perfect setup (comprehensive check)
@@ -311,28 +746,82 @@ class RealtimeTrader:
             if not validation_result:
                 if rejection_reason:
                     self.last_rejection_reasons[ticker].append(rejection_reason)
+                    # FIX: Save rejection to database via callback
+                    if self.rejection_callback:
+                        try:
+                            self.rejection_callback(ticker, signal.entry_price, rejection_reason)
+                        except Exception as e:
+                            logger.error(f"Error saving rejection to database for {ticker}: {e}")
                 continue
             
             # PRIORITY 4: Setup must be confirmed for multiple periods (not just appeared)
-            # This ensures the setup is sustainable, not just a momentary spike
-            # RELAXED for fast movers: Fast movers can have explosive moves that don't build over time
+            # ENHANCED: Relaxed for fast movers, after-hours, and late-day
             is_fast_mover_check, fast_mover_metrics_check = self._is_fast_mover(df_with_indicators, current_idx)
+            vol_ratio_check = fast_mover_metrics_check.get('vol_ratio', 0)
+            
+            # For very strong fast movers (6x+ volume), reduce to 1 period
             # For very strong fast movers (4x+ volume, 10%+ momentum), skip setup confirmation entirely
-            if is_fast_mover_check and fast_mover_metrics_check.get('vol_ratio', 0) >= 4.0 and fast_mover_metrics_check.get('momentum', 0) >= 10.0:
-                logger.info(f"[{ticker}] VERY STRONG FAST MOVER: Skipping setup confirmation (vol={fast_mover_metrics_check.get('vol_ratio', 0):.2f}x, momentum={fast_mover_metrics_check.get('momentum', 0):.2f}%)")
-            elif not self._setup_confirmed_multiple_periods(df_with_indicators, current_idx, signal, is_fast_mover=is_fast_mover_check):
-                self.last_rejection_reasons[ticker].append("Setup not confirmed for multiple periods")
-                logger.debug(f"[{ticker}] Setup confirmation failed (fast_mover={is_fast_mover_check})")
-                continue
+            if is_fast_mover_check and vol_ratio_check >= 4.0 and fast_mover_metrics_check.get('momentum', 0) >= 10.0:
+                logger.info(f"[{ticker}] VERY STRONG FAST MOVER: Skipping setup confirmation (vol={vol_ratio_check:.2f}x, momentum={fast_mover_metrics_check.get('momentum', 0):.2f}%)")
+            else:
+                # Determine time-based requirements
+                is_after_hours = hour >= 16 and hour < 20
+                is_late_day = hour >= 15 and hour < 16
+                
+                # Set min/max periods based on context
+                if is_fast_mover_check and vol_ratio_check >= 6.0:
+                    min_periods = 1
+                    max_periods = 2
+                    logger.debug(f"[{ticker}] VERY STRONG FAST MOVER: Reduced confirmation to 1 period (vol={vol_ratio_check:.2f}x)")
+                elif is_after_hours or is_late_day:
+                    min_periods = 1 if is_fast_mover_check else 2
+                    max_periods = 4
+                    logger.debug(f"[{ticker}] AFTER-HOURS/LATE-DAY: Reduced confirmation to {min_periods} period(s)")
+                else:
+                    min_periods = None  # Use default
+                    max_periods = None
+                
+                if not self._setup_confirmed_multiple_periods(df_with_indicators, current_idx, signal, 
+                                                               is_fast_mover=is_fast_mover_check,
+                                                               min_periods=min_periods,
+                                                               max_periods=max_periods):
+                    reason = "Setup not confirmed for multiple periods"
+                    self.last_rejection_reasons[ticker].append(reason)
+                    # FIX: Save rejection to database via callback
+                    if self.rejection_callback:
+                        try:
+                            self.rejection_callback(ticker, signal.entry_price, reason)
+                        except Exception as e:
+                            logger.error(f"Error saving rejection to database for {ticker}: {e}")
+                    logger.debug(f"[{ticker}] Setup confirmation failed (fast_mover={is_fast_mover_check})")
+                    continue
             
             # PRIORITY 5: Check expected gain meets minimum
             expected_gain = ((signal.target_price - signal.entry_price) / signal.entry_price) * 100
             if expected_gain < self.min_entry_price_increase:
+                reason = f"Expected gain {expected_gain:.2f}% < minimum {self.min_entry_price_increase:.2f}%"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
+                logger.debug(f"[{ticker}] Expected gain {expected_gain:.2f}% < minimum {self.min_entry_price_increase:.2f}%")
                 continue
             
             # PRIORITY 6: Final confirmation - price must be confirming the signal NOW
             current_price = current.get('close', 0)
             if current_price < signal.entry_price * 0.98:  # Price already dropped 2% from signal
+                reason = f"Price dropped {((signal.entry_price - current_price) / signal.entry_price * 100):.2f}% from signal entry price"
+                self.last_rejection_reasons[ticker].append(reason)
+                # FIX: Save rejection to database via callback
+                if self.rejection_callback:
+                    try:
+                        self.rejection_callback(ticker, signal.entry_price, reason)
+                    except Exception as e:
+                        logger.error(f"Error saving rejection to database for {ticker}: {e}")
+                logger.debug(f"[{ticker}] Price dropped from ${signal.entry_price:.4f} to ${current_price:.4f}")
                 continue  # Signal is stale or failing
             
             # IMPROVED: Store fast mover status in indicators for stop loss calculation
@@ -383,21 +872,84 @@ class RealtimeTrader:
         if current_price < 0.50:
             return None
         
-        # PRIORITY 0.5: Slow mover volume check (lower threshold: 200K vs 500K normal)
-        if len(df_with_indicators) >= 60:
-            recent_volumes = df_with_indicators['volume'].tail(60).values
-            total_volume_60min = recent_volumes.sum()
-            min_slow_mover_volume = 200000  # 200K minimum for slow movers
-            if total_volume_60min < min_slow_mover_volume:
-                return None
-        elif len(df_with_indicators) >= 20:
-            recent_volumes = df_with_indicators['volume'].tail(20).values
-            total_volume_20min = recent_volumes.sum()
-            min_volume_20min = 67000  # 67K over 20 min (extrapolated from 200K/3)
-            if total_volume_20min < min_volume_20min:
-                return None
+        # PRIORITY 0.5: Slow mover volume check - ENHANCED: Use calculated thresholds based on historical average
+        # Purpose: Filter out low-volume/no-movement stocks (liquidity filter)
+        
+        # Calculate historical average volume (use longer period for better baseline)
+        if len(df_with_indicators) >= 100:
+            historical_avg_volume = df_with_indicators['volume'].tail(100).mean()
+        elif len(df_with_indicators) >= 50:
+            historical_avg_volume = df_with_indicators['volume'].tail(50).mean()
         else:
-            return None
+            historical_avg_volume = df_with_indicators['volume'].mean() if len(df_with_indicators) > 0 else 0
+        
+        # Calculate volume ratio (current vs historical average)
+        current_volume = current.get('volume', 0)
+        if len(df_with_indicators) >= 100:
+            volume_ratio_long = current_volume / historical_avg_volume if historical_avg_volume > 0 else 0
+        else:
+            avg_volume_20 = df_with_indicators['volume'].tail(20).mean() if len(df_with_indicators) >= 20 else historical_avg_volume
+            volume_ratio_long = current_volume / avg_volume_20 if avg_volume_20 > 0 else 0
+        
+        # PRIORITY: Use volume ratio as primary indicator
+        # If volume ratio is exceptional (>= 5x), skip daily volume check (stock is clearly moving)
+        if volume_ratio_long >= 5.0:
+            logger.debug(f"[{ticker}] SLOW MOVER: EXCEPTIONAL VOLUME: Volume ratio {volume_ratio_long:.2f}x >= 5x, skipping daily volume check")
+            # Skip daily volume check - exceptional volume ratio indicates sufficient liquidity
+        else:
+            # For stocks with moderate volume ratio, check daily volume to filter out low-volume stocks
+            # Calculate threshold based on historical average and time of day
+            current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+            et = pytz.timezone('US/Eastern')
+            if current_time.tz is None:
+                current_time = et.localize(current_time)
+            else:
+                current_time = current_time.astimezone(et)
+            
+            hour = current_time.hour
+            
+            # Calculate minimum daily volume based on historical average and time of day
+            # Slow movers use lower thresholds than normal entries (40% of normal thresholds)
+            if hour < 6:  # 4-6 AM (premarket)
+                # Use 8x historical average (40% of normal 20x)
+                min_daily_volume = max(historical_avg_volume * 8, 20000)  # At least 20K absolute minimum
+            elif hour < 8:  # 6-8 AM (early morning)
+                # Use 16x historical average (40% of normal 40x)
+                min_daily_volume = max(historical_avg_volume * 16, 40000)  # At least 40K absolute minimum
+            elif hour < 10:  # 8-10 AM (mid-morning)
+                # Use 24x historical average (40% of normal 60x)
+                min_daily_volume = max(historical_avg_volume * 24, 60000)  # At least 60K absolute minimum
+            elif hour >= 16 and hour < 20:  # After-hours (4 PM - 8 PM)
+                # Use 12x historical average (40% of normal 30x)
+                min_daily_volume = max(historical_avg_volume * 12, 40000)  # At least 40K absolute minimum
+            elif hour >= 15 and hour < 16:  # Late-day (3 PM - 4 PM)
+                # Use 20x historical average (40% of normal 50x)
+                min_daily_volume = max(historical_avg_volume * 20, 60000)  # At least 60K absolute minimum
+            else:  # 10 AM - 3 PM (regular hours)
+                # Use 40x historical average (40% of normal 100x)
+                min_daily_volume = max(historical_avg_volume * 40, 80000)  # At least 80K absolute minimum
+            
+            # Check total volume over recent periods (simulating daily volume check)
+            if len(df_with_indicators) >= 60:
+                recent_volumes = df_with_indicators['volume'].tail(60).values
+                total_volume_60min = recent_volumes.sum()
+                if total_volume_60min < min_daily_volume:
+                    logger.debug(f"[{ticker}] SLOW MOVER: Low volume stock (total {total_volume_60min:,.0f} < {min_daily_volume:,.0f} over 60 min, calculated from historical avg {historical_avg_volume:,.0f})")
+                    return None
+            elif len(df_with_indicators) >= 20:
+                recent_volumes = df_with_indicators['volume'].tail(20).values
+                total_volume_20min = recent_volumes.sum()
+                # Extrapolate to 60 minutes: need at least min_daily_volume/3 over 20 min
+                min_volume_20min = min_daily_volume // 3
+                if total_volume_20min < min_volume_20min:
+                    logger.debug(f"[{ticker}] SLOW MOVER: Low volume stock (total {total_volume_20min:,.0f} < {min_volume_20min:,.0f} over 20 min, extrapolated, calculated from historical avg {historical_avg_volume:,.0f})")
+                    return None
+            else:
+                # If very little data, check current volume (should be at least 1.5x historical average for slow movers)
+                min_current_volume = max(historical_avg_volume * 1.5, 5000)  # At least 1.5x average or 5K absolute minimum
+                if current_volume < min_current_volume:
+                    logger.debug(f"[{ticker}] SLOW MOVER: Low volume stock ({current_volume:,.0f} < {min_current_volume:,.0f} required, calculated from historical avg {historical_avg_volume:,.0f})")
+                    return None
         
         # SLOW MOVER CRITERIA (ALL must pass)
         volume_ratio = current.get('volume_ratio', 0)
@@ -564,22 +1116,35 @@ class RealtimeTrader:
         
         return df
     
-    def _setup_confirmed_multiple_periods(self, df: pd.DataFrame, idx: int, signal: PatternSignal, is_fast_mover: bool = False) -> bool:
+    def _setup_confirmed_multiple_periods(self, df: pd.DataFrame, idx: int, signal: PatternSignal, 
+                                          is_fast_mover: bool = False,
+                                          min_periods: Optional[int] = None,
+                                          max_periods: Optional[int] = None) -> bool:
         """
         Check that the setup has been valid for multiple periods (not just appeared)
         This ensures sustainability, not just a momentary spike
-        RELAXED for fast movers: Fast movers can have explosive moves that don't build over time
+        ENHANCED: Relaxed for fast movers, after-hours, and late-day
+        
+        Args:
+            min_periods: Minimum periods required (default: 2 for fast movers, 4 for normal)
+            max_periods: Maximum periods to check (default: 4 for fast movers, 6 for normal)
         """
         if idx < 5:
             return False
         
-        # RELAXED for fast movers: Only require 2 periods (was 4) for fast movers
-        # Fast movers can have explosive moves that don't build gradually
-        required_periods = 2 if is_fast_mover else 4
+        # Set default periods if not provided
+        if min_periods is None:
+            min_periods = 2 if is_fast_mover else 4
+        if max_periods is None:
+            max_periods = 4 if is_fast_mover else 6
         
-        # Check last 4-6 periods to ensure setup conditions have been building
+        # For very strong fast movers (6x+ volume), reduce to 1 period
+        if is_fast_mover and min_periods == 1:
+            max_periods = min(max_periods, 2)  # Only check 2 periods max
+        
+        # Check last N periods to ensure setup conditions have been building
         confirmation_periods = 0
-        lookback_periods = 4 if is_fast_mover else 6  # Check fewer periods for fast movers
+        lookback_periods = max_periods
         
         for check_idx in range(max(0, idx-lookback_periods), idx):  # Check last N periods
             check_point = df.iloc[check_idx]
@@ -613,7 +1178,7 @@ class RealtimeTrader:
                 confirmation_periods += 1
         
         # Setup must be confirmed for required periods
-        return confirmation_periods >= required_periods
+        return confirmation_periods >= min_periods
     
     def _check_exit_signals(self, df: pd.DataFrame, ticker: str, current_price: Optional[float] = None) -> List[TradeSignal]:
         """
@@ -708,8 +1273,334 @@ class RealtimeTrader:
         # SLOW MOVER EXIT LOGIC: Use different logic if this is a slow mover entry
         is_slow_mover_entry = position.is_slow_mover_entry
         
+        # SURGE EXIT LOGIC: Use different logic if this is a surge entry
+        is_surge_entry = position.is_surge_entry
+        
         # Check exit conditions
         exit_reason = None
+        
+        # SURGE-SPECIFIC EXIT LOGIC (check before normal exit logic)
+        if is_surge_entry:
+            # Surge trades have tighter stops and shorter hold times
+            min_hold_time_surge = self.surge_exit_min_hold_minutes
+            max_hold_time_surge = self.surge_exit_max_hold_minutes
+            
+            # 1. Maximum hold time (30 minutes) - surges can reverse quickly
+            if minutes_since_entry >= max_hold_time_surge:
+                exit_reason = f"Surge max hold time reached ({max_hold_time_surge} minutes)"
+            
+            # 2. Hard stop loss (12% - tighter than normal 15%)
+            # OPTIMIZED: Don't exit on stop loss if price dropped too rapidly (suggests recovery) or volume is still strong
+            elif current_price <= position.stop_loss:
+                # Check if price dropped too rapidly from peak (suggests it might recover)
+                rapid_drop = False
+                price_recovering = False
+                volume_still_strong = False
+                price_above_entry = current_price > position.entry_price
+                
+                if len(df_with_indicators) >= 5 and position.max_price_reached > 0:
+                    recent_bars = df_with_indicators.iloc[-5:]
+                    
+                    # Check if price dropped very rapidly from peak (more than 20% in short time)
+                    drop_from_peak = ((position.max_price_reached - current_price) / position.max_price_reached) * 100
+                    if drop_from_peak > 20.0:  # Dropped more than 20% from peak
+                        rapid_drop = True
+                    
+                    # Check if last 2 bars are showing recovery (higher closes)
+                    if len(recent_bars) >= 2:
+                        prev_close = recent_bars.iloc[-2]['close']
+                        curr_close = recent_bars.iloc[-1]['close']
+                        if curr_close > prev_close:
+                            price_recovering = True
+                    
+                    # Check if volume is still strong (above average of recent bars)
+                    current_vol = recent_bars.iloc[-1].get('volume', 0)
+                    avg_vol = recent_bars['volume'].mean()
+                    if current_vol > avg_vol * 0.7:  # Still 70%+ of average volume
+                        volume_still_strong = True
+                
+                # OPTIMIZED: Don't exit on stop loss if:
+                # - (Price is still above entry OR rapid drop suggests recovery) AND
+                # - (Price is recovering OR volume is still strong) AND
+                # - We haven't hit max hold time yet AND
+                # - We're still early in the trade (less than 20 minutes)
+                should_continue = False
+                if minutes_since_entry < 20:  # Still early in trade
+                    if (price_above_entry or rapid_drop) and (price_recovering or volume_still_strong):
+                        should_continue = True
+                elif price_above_entry and (price_recovering or volume_still_strong) and minutes_since_entry < max_hold_time_surge:
+                    should_continue = True
+                
+                if should_continue:
+                    logger.info(f"[{ticker}] SURGE: Stop loss hit but continuing (recovering={price_recovering}, vol_strong={volume_still_strong}, rapid_drop={rapid_drop}, above_entry={price_above_entry})")
+                else:
+                    exit_reason = f"Surge stop loss hit at ${position.stop_loss:.4f} ({self.surge_exit_hard_stop_pct:.1f}%)"
+            
+            # 3. Progressive profit taking (only after minimum hold time)
+            elif minutes_since_entry >= min_hold_time_surge:
+                profit_pct = position.unrealized_pnl_pct
+                
+                # 20% profit: Take 50% of position (extended from 15%)
+                if profit_pct >= 20.0 and not position.partial_profit_taken:
+                    exit_reason = f"Surge profit target 1: 20% profit - taking 50% of position"
+                    position.partial_profit_taken = True
+                    position.original_shares = position.shares
+                    position.shares = position.shares * 0.5
+                    logger.info(f"[{ticker}] SURGE: Taking 50% profit at +{profit_pct:.1f}% (${current_price:.4f})")
+                
+                # 30% profit: Take another 25% of original position (50% of remaining)
+                elif profit_pct >= 30.0 and position.partial_profit_taken and not position.partial_profit_taken_second:
+                    exit_reason = f"Surge profit target 2: 30% profit - taking 25% of original position"
+                    position.partial_profit_taken_second = True
+                    if position.original_shares > 0:
+                        # Take 50% of remaining shares (which is 25% of original)
+                        position.shares = position.shares * 0.5
+                    logger.info(f"[{ticker}] SURGE: Taking 25% of original position at +{profit_pct:.1f}% (${current_price:.4f})")
+                
+                # 50% profit: Take remaining position (extended from 40%)
+                elif profit_pct >= 50.0:
+                    exit_reason = f"Surge profit target 3: 50% profit - taking remaining position"
+                    logger.info(f"[{ticker}] SURGE: Taking remaining position at +{profit_pct:.1f}% (${current_price:.4f})")
+                
+                # 4. Trailing stop (10% - tighter than normal)
+                # OPTIMIZED: Use wider trailing stops for strong surge moves to capture more
+                elif position.max_price_reached > 0 and position.unrealized_pnl_pct >= 3.0:
+                    # Use wider trailing stops for stronger moves
+                    if position.unrealized_pnl_pct >= 15.0:
+                        trailing_stop_pct = 15.0  # 15% trailing stop for 15%+ profit (wider)
+                    elif position.unrealized_pnl_pct >= 10.0:
+                        trailing_stop_pct = 12.0  # 12% trailing stop for 10%+ profit
+                    else:
+                        trailing_stop_pct = self.surge_exit_trailing_stop_pct  # 10% default
+                    
+                    trailing_stop = position.max_price_reached * (1 - trailing_stop_pct / 100)
+                    
+                    # Ensure trailing stop never goes below entry price
+                    trailing_stop = max(trailing_stop, position.entry_price)
+                    
+                    # Trailing stop only moves UP, never down
+                    if position.trailing_stop_price is None:
+                        position.trailing_stop_price = trailing_stop
+                        logger.info(f"[{ticker}] SURGE trailing stop activated at ${trailing_stop:.4f} (+{position.unrealized_pnl_pct:.2f}% profit, {trailing_stop_pct:.1f}% width)")
+                    elif trailing_stop > position.trailing_stop_price:
+                        position.trailing_stop_price = trailing_stop
+                        logger.debug(f"[{ticker}] SURGE trailing stop moved up to ${trailing_stop:.4f}")
+                    
+                    # OPTIMIZED: Check if price is recovering before exiting on trailing stop
+                    if current_price <= position.trailing_stop_price:
+                        # Check if price is recovering (last bar higher than previous)
+                        price_recovering = False
+                        if len(df_with_indicators) >= 2:
+                            prev_close = df_with_indicators.iloc[-2]['close']
+                            if current_price > prev_close:
+                                price_recovering = True
+                        
+                        # Don't exit if price is recovering and still above entry
+                        if price_recovering and current_price > position.entry_price:
+                            logger.debug(f"[{ticker}] SURGE: Trailing stop hit but price recovering (${current_price:.4f}), continuing")
+                        else:
+                            exit_reason = f"Surge trailing stop hit at ${position.trailing_stop_price:.4f} ({trailing_stop_pct:.1f}% from high)"
+                
+                # 4.5. SURGE MOMENTUM HOLDING LOGIC (Key Improvement)
+                # Continue holding surge trades if strong momentum persists
+                # This captures the full potential of high-momentum surge trades
+                if profit_pct >= 8.0:  # Base 8% profit threshold
+                    # Get current indicators for momentum check
+                    current_rsi = current.get('rsi', 50)
+                    current_volume = current.get('volume', 0)
+                    
+                    # Calculate volume ratio vs recent average
+                    if len(df_with_indicators) >= 10:
+                        recent_avg_volume = df_with_indicators.iloc[-10:]['volume'].mean()
+                        volume_ratio_current = current_volume / recent_avg_volume if recent_avg_volume > 0 else 1.0
+                    else:
+                        volume_ratio_current = 1.0
+                    
+                    # IMPROVED: More permissive surge conditions (matching simulator optimization)
+                    # Volume threshold: 2.0 → 1.8 (more sensitive)
+                    # RSI threshold: 75 → 80 (allows stronger surges)
+                    if (volume_ratio_current > 1.8 and  # Lower volume threshold (more sensitive)
+                        current_rsi < 80):  # Higher RSI threshold (allows stronger surges)
+                        logger.info(f"[{ticker}] SURGE: Strong momentum persists - continuing hold (vol={volume_ratio_current:.1f}x > 1.8, RSI={current_rsi:.1f} < 80, profit={profit_pct:.1f}%)")
+                        # Don't exit - let surge continue running
+                        # This captures extended gains from strong momentum moves
+                    elif profit_pct >= 20.0:
+                        # Extended take profit for surge (20% target from simulator)
+                        exit_reason = f"Surge extended target reached: 20% profit - taking full position"
+                        logger.info(f"[{ticker}] SURGE: Extended target 20% reached at ${current_price:.4f}")
+                    else:
+                        # Momentum weakening but still above base - consider trailing stop
+                        pass
+                
+                # 5. Strong reversal detection (more conservative - require stronger signals)
+                elif minutes_since_entry >= min_hold_time_surge:
+                    reversal_signals = 0
+                    required_signals = 3  # Default requirement
+                    
+                    if len(df_with_indicators) >= 5:
+                        # Additional check: If we're in a strong uptrend with significant profit,
+                        # require even more reversal signals to avoid exiting on minor pullbacks
+                        profit_pct = position.unrealized_pnl_pct
+                        price_above_entry_pct = ((current_price - position.entry_price) / position.entry_price) * 100
+                        
+                        # CRITICAL FIX: Require more signals for early exits (first 30 minutes)
+                        # This prevents premature exits during normal pullbacks in strong uptrends
+                        if minutes_since_entry < 30:
+                            # Very early in trade - require 6+ signals to avoid false exits
+                            required_signals = 6
+                        elif minutes_since_entry < 60:
+                            # Early in trade - require 5+ signals
+                            required_signals = 5
+                        elif profit_pct >= 20.0 and price_above_entry_pct >= 15.0:
+                            # Strong uptrend with good profit - require 5+ signals instead of 3+
+                            required_signals = 5
+                        elif profit_pct >= 10.0 and price_above_entry_pct >= 8.0:
+                            # Moderate uptrend - require 4+ signals
+                            required_signals = 4
+                        
+                        # Check for price recovery after pullback
+                        # If price is recovering, don't count reversal signals
+                        recent_bars = df_with_indicators.iloc[-5:]
+                        current_bar = recent_bars.iloc[-1]
+                        prev_bar = recent_bars.iloc[-2] if len(recent_bars) >= 2 else current_bar
+                        
+                        # Recovery check: If current price is higher than previous bar, we're recovering
+                        price_recovering = current_price > prev_bar['close']
+                        
+                        # Check if price is still above entry (critical for early exits)
+                        price_still_above_entry = current_price > position.entry_price
+                        
+                        # Check if we're still in uptrend (price above recent MAs)
+                        sma_10 = current_bar.get('sma_10', 0)
+                        sma_20 = current_bar.get('sma_20', 0)
+                        price_above_mas = (sma_10 > 0 and current_price > sma_10) or (sma_20 > 0 and current_price > sma_20)
+                        
+                        # CRITICAL: If price is recovering, skip reversal detection entirely
+                        # This prevents exits during minor pullbacks that are already recovering
+                        if price_recovering:
+                            # Price is recovering - don't count any reversal signals
+                            # This gives trades room to recover from pullbacks
+                            reversal_signals = 0
+                            required_signals = 999  # Effectively disable exit
+                        elif price_still_above_entry and price_above_mas:
+                            # Price still above entry and MAs - require more signals but still count them
+                            # This gives trades room to breathe during minor pullbacks in uptrends
+                            required_signals = max(int(required_signals * 1.5), 6)
+                            
+                            # Check for price declining, volume declining, MACD turning negative
+                            # But be more conservative - require significant declines, not just minor pullbacks
+                            for i in range(1, len(recent_bars)):
+                                prev_check_bar = recent_bars.iloc[i-1]
+                                curr_check_bar = recent_bars.iloc[i]
+                                # Price decline: require >2% drop, not just any decline
+                                price_drop_pct = ((prev_check_bar['close'] - curr_check_bar['close']) / prev_check_bar['close']) * 100
+                                if price_drop_pct > 2.0:
+                                    reversal_signals += 1
+                                # Volume declining: require >30% drop, not just 20%
+                                if curr_check_bar['volume'] < prev_check_bar['volume'] * 0.7:
+                                    reversal_signals += 1
+                                # MACD histogram: require significant decline
+                                macd_prev = prev_check_bar.get('macd_hist', 0)
+                                macd_curr = curr_check_bar.get('macd_hist', 0)
+                                if macd_prev > 0 and macd_curr < macd_prev * 0.5:  # MACD cut in half
+                                    reversal_signals += 1
+                        else:
+                            # Price below entry or MAs - count reversal signals normally
+                            # Check for price declining, volume declining, MACD turning negative
+                            for i in range(1, len(recent_bars)):
+                                prev_check_bar = recent_bars.iloc[i-1]
+                                curr_check_bar = recent_bars.iloc[i]
+                                # Price decline: require >2% drop, not just any decline
+                                price_drop_pct = ((prev_check_bar['close'] - curr_check_bar['close']) / prev_check_bar['close']) * 100
+                                if price_drop_pct > 2.0:
+                                    reversal_signals += 1
+                                # Volume declining: require >30% drop, not just 20%
+                                if curr_check_bar['volume'] < prev_check_bar['volume'] * 0.7:
+                                    reversal_signals += 1
+                                # MACD histogram: require significant decline
+                                macd_prev = prev_check_bar.get('macd_hist', 0)
+                                macd_curr = curr_check_bar.get('macd_hist', 0)
+                                if macd_prev > 0 and macd_curr < macd_prev * 0.5:  # MACD cut in half
+                                    reversal_signals += 1
+                    
+                    if reversal_signals >= required_signals:
+                        exit_reason = f"Surge strong reversal detected ({reversal_signals} reversal signals, required {required_signals})"
+            
+            # If no exit reason yet and within minimum hold time, don't exit
+            if exit_reason is None and minutes_since_entry < min_hold_time_surge:
+                logger.debug(f"[{ticker}] SURGE entry: {minutes_since_entry:.1f} min since entry, skipping exit checks (min {min_hold_time_surge} min)")
+                return exit_signals  # Return early, don't check normal exit logic
+        
+        # STRATEGY-SPECIFIC EXIT LOGIC (Key Improvement)
+        # Different exit strategies for different position types
+        strategy_exit_reason = None
+        
+        # Get position type from pattern name or indicators
+        position_pattern = position.entry_pattern.lower() if position.entry_pattern else ""
+        is_breakout_entry = any(term in position_pattern for term in ['breakout', 'consolidation_breakout'])
+        is_scalp_entry = any(term in position_pattern for term in ['volume_breakout']) and position.unrealized_pnl_pct < 5.0
+        is_swing_entry = not (is_surge_entry or is_breakout_entry or is_scalp_entry)
+        
+        # Get current indicators for strategy decisions
+        current_rsi = current.get('rsi', 50)
+        current_macd_hist = current.get('macd_hist', 0)
+        current_volume = current.get('volume', 0)
+        
+        # Calculate volume ratio vs recent average
+        if len(df_with_indicators) >= 10:
+            recent_avg_volume = df_with_indicators.iloc[-10:]['volume'].mean()
+            volume_ratio_current = current_volume / recent_avg_volume if recent_avg_volume > 0 else 1.0
+        else:
+            volume_ratio_current = 1.0
+        
+        # BREAKOUT STRATEGY: Conservative trailing stops, 12% target
+        if is_breakout_entry and exit_reason is None:
+            if position.unrealized_pnl_pct >= 12.0:
+                strategy_exit_reason = "Breakout target reached: 12% profit"
+                logger.info(f"[{ticker}] BREAKOUT: Target 12% reached at ${current_price:.4f}")
+            # Trailing stop after 8 minutes for breakout
+            elif minutes_since_entry >= 8 and position.unrealized_pnl_pct >= 6.0:
+                if position.max_price_reached > 0:
+                    drop_from_peak = (position.max_price_reached - current_price) / position.max_price_reached
+                    if drop_from_peak > 0.05:  # 5% trailing from 6% profit level
+                        strategy_exit_reason = f"Breakout trailing stop: 5% drop from peak (profit: {position.unrealized_pnl_pct:.1f}%)"
+            # Standard reversal conditions for breakout
+            elif current_rsi > 75 and current_macd_hist < 0:
+                strategy_exit_reason = "Breakout reversal: RSI > 75 and MACD negative"
+        
+        # SCALP STRATEGY: Quick exits, 3% target
+        elif is_scalp_entry and exit_reason is None:
+            if position.unrealized_pnl_pct >= 3.0:
+                strategy_exit_reason = "Scalp target reached: 3% profit"
+                logger.info(f"[{ticker}] SCALP: Target 3% reached at ${current_price:.4f}")
+            # Tight trailing stop for scalp
+            elif position.unrealized_pnl_pct >= 1.5:
+                if position.max_price_reached > 0:
+                    drop_from_peak = (position.max_price_reached - current_price) / position.max_price_reached
+                    if drop_from_peak > 0.02:  # 2% trailing stop
+                        strategy_exit_reason = f"Scalp trailing stop: 2% drop from peak"
+            # Quick exit on reversal
+            elif current_rsi > 70 and current_macd_hist < 0:
+                strategy_exit_reason = "Scalp reversal: RSI > 70 and MACD negative"
+        
+        # SWING STRATEGY: Standard logic, 10% target
+        elif is_swing_entry and exit_reason is None:
+            if position.unrealized_pnl_pct >= 10.0:
+                strategy_exit_reason = "Swing target reached: 10% profit"
+                logger.info(f"[{ticker}] SWING: Target 10% reached at ${current_price:.4f}")
+            # Standard trailing stop after 15 minutes
+            elif minutes_since_entry >= 15 and position.unrealized_pnl_pct >= 5.0:
+                if position.max_price_reached > 0:
+                    drop_from_peak = (position.max_price_reached - current_price) / position.max_price_reached
+                    if drop_from_peak > 0.04:  # 4% trailing stop
+                        strategy_exit_reason = f"Swing trailing stop: 4% drop from peak"
+            # Standard reversal conditions
+            elif current_rsi > 72 and current_macd_hist < 0:
+                strategy_exit_reason = "Swing reversal: RSI > 72 and MACD negative"
+        
+        # Use strategy-specific exit reason if determined and no other exit reason exists
+        if strategy_exit_reason and exit_reason is None:
+            exit_reason = strategy_exit_reason
         
         # 0. IMMEDIATE EXIT: Setup failed right after entry (most important)
         # FIX: Only check setup failed after minimum hold time (90 minutes) to avoid premature exits
@@ -721,8 +1612,45 @@ class RealtimeTrader:
             logger.debug(f"[{ticker}] {minutes_since_entry:.1f} min since entry, skipping setup failed check (min {min_hold_time_setup_failed} min)")
         
         # 1. Stop loss hit
+        # OPTIMIZED: For normal entries, check if price is recovering or dropped too rapidly before exiting
         if exit_reason is None and current_price <= position.stop_loss:
-            exit_reason = f"Stop loss hit at ${position.stop_loss:.4f}"
+            # Check if price is recovering (recent bars showing upward movement)
+            price_recovering = False
+            rapid_drop = False
+            volume_still_strong = False
+            
+            if len(df_with_indicators) >= 5 and position.max_price_reached > 0:
+                recent_bars = df_with_indicators.iloc[-5:]
+                
+                # Check if price dropped very rapidly from peak (more than 15% in short time)
+                drop_from_peak = ((position.max_price_reached - current_price) / position.max_price_reached) * 100
+                if drop_from_peak > 15.0:  # Dropped more than 15% from peak
+                    rapid_drop = True
+                
+                if len(recent_bars) >= 2:
+                    prev_close = recent_bars.iloc[-2]['close']
+                    curr_close = recent_bars.iloc[-1]['close']
+                    if curr_close > prev_close:
+                        price_recovering = True
+                
+                # Check if volume is still strong
+                current_vol = recent_bars.iloc[-1].get('volume', 0)
+                avg_vol = recent_bars['volume'].mean()
+                if current_vol > avg_vol * 0.7:  # Still 70%+ of average volume
+                    volume_still_strong = True
+            
+            # OPTIMIZED: Don't exit on stop loss if:
+            # - Price is recovering AND (still above entry OR rapid drop suggests recovery) AND
+            # - (Volume still strong OR we're early in trade < 30 minutes)
+            should_continue = False
+            if price_recovering:
+                if (current_price > position.entry_price or rapid_drop) and (volume_still_strong or minutes_since_entry < 30):
+                    should_continue = True
+            
+            if should_continue:
+                logger.info(f"[{ticker}] Stop loss hit but continuing (recovering={price_recovering}, vol_strong={volume_still_strong}, rapid_drop={rapid_drop})")
+            else:
+                exit_reason = f"Stop loss hit at ${position.stop_loss:.4f}"
         
         # 2. Target price reached
         # IMPROVED: For very strong fast movers, don't exit on profit target - let them run with trailing stops
@@ -811,14 +1739,17 @@ class RealtimeTrader:
                     
                     if has_partial_exits:
                         # After partial exits: Very wide trailing stops for remaining position
-                        if unrealized_pnl_pct >= 100:
-                            trailing_stop_pct = None  # Disable trailing stop for 100%+ profit (let it run)
+                        # OPTIMIZED: Even wider stops to capture more of strong moves
+                        if unrealized_pnl_pct >= 150:
+                            trailing_stop_pct = None  # Disable trailing stop for 150%+ profit (let it run)
+                        elif unrealized_pnl_pct >= 100:
+                            trailing_stop_pct = 40.0  # 40% trailing stop for 100%+ profit (very wide)
                         elif unrealized_pnl_pct >= 50:
-                            trailing_stop_pct = 30.0  # 30% trailing stop for 50%+ profit (very wide)
+                            trailing_stop_pct = 35.0  # 35% trailing stop for 50%+ profit (wider than before)
                         elif unrealized_pnl_pct >= 30:
-                            trailing_stop_pct = 20.0  # 20% trailing stop for 30%+ profit
+                            trailing_stop_pct = 25.0  # 25% trailing stop for 30%+ profit (wider than before)
                         else:
-                            trailing_stop_pct = 15.0  # 15% trailing stop
+                            trailing_stop_pct = 20.0  # 20% trailing stop (wider than before)
                     else:
                         # IMPROVED: Check if this is a fast mover entry - use wider trailing stops
                         is_fast_mover_entry = getattr(position, 'indicators', {}).get('is_fast_mover_entry', False) if hasattr(position, 'indicators') else False
@@ -938,13 +1869,27 @@ class RealtimeTrader:
                             exit_reason = f"Trailing stop hit at ${position.trailing_stop_price:.4f} ({trailing_stop_pct:.1f}% from high)"
         
         # 4. Trend weakness/reversal signals
-        # FIX: Add minimum hold time before allowing trend weakness exit (100 minutes for better capture)
-        # Also check if we're in a strong uptrend - if so, require even more signals
+        # OPTIMIZED: More conservative for strong moves - require higher profit threshold
+        # Also check if we have partial exits - if so, be even more conservative
         min_hold_time_trend_weakness = 100
+        has_partial_exits = (position.original_shares > 0 and position.shares < position.original_shares)
+        
         if exit_reason is None and minutes_since_entry >= min_hold_time_trend_weakness:
-            # Check if price is still well above entry (5%+ profit) - if so, be even more conservative
-            if position.unrealized_pnl_pct >= 5.0:
-                # For profitable trades, require even more confirmation
+            # OPTIMIZED: For strong moves (50%+ profit) or after partial exits, require price to drop significantly
+            # This prevents premature exits during normal pullbacks in strong uptrends
+            if position.unrealized_pnl_pct >= 50.0 or has_partial_exits:
+                # For very strong moves: Only exit on trend weakness if price drops below recent high by significant amount
+                # This allows the trade to recover from pullbacks
+                recent_high = position.max_price_reached
+                price_drop_from_high = ((recent_high - current_price) / recent_high) * 100
+                
+                # Require at least 15% drop from high before considering trend weakness exit
+                if price_drop_from_high >= 15.0 and self._detect_trend_weakness(df_with_indicators, position):
+                    exit_reason = f"Trend weakness detected (price dropped {price_drop_from_high:.1f}% from high)"
+                else:
+                    logger.debug(f"[{ticker}] Strong move (+{position.unrealized_pnl_pct:.1f}%): Price drop {price_drop_from_high:.1f}% from high, not enough for trend weakness exit")
+            elif position.unrealized_pnl_pct >= 5.0:
+                # For profitable trades, require confirmation
                 if self._detect_trend_weakness(df_with_indicators, position):
                     exit_reason = "Trend weakness detected"
             elif self._detect_trend_weakness(df_with_indicators, position):
@@ -969,7 +1914,8 @@ class RealtimeTrader:
         
         # 6. Progressive partial profit taking - Lock in profits at multiple levels
         # Strategy: 50% at 20%, 25% at 40%, 12.5% at 80%, hold 12.5% with enhanced logic
-        if not exit_reason:  # Only if no other exit reason
+        # CRITICAL FIX: Only generate partial exit signals if position has shares > 0
+        if not exit_reason and position.shares > 0:  # Only if no other exit reason AND position has shares
             hold_time_min = (current_time - position.entry_time).total_seconds() / 60
             
             # Only allow partial exits after minimum hold time (20 minutes)
@@ -1023,6 +1969,68 @@ class RealtimeTrader:
             exit_signals.append(exit_signal)
         
         return exit_signals
+    
+    def _get_daily_macd(self, ticker: str, current_date: datetime) -> Optional[Dict[str, float]]:
+        """
+        Get daily MACD values for multi-timeframe analysis
+        
+        Args:
+            ticker: Stock ticker symbol
+            current_date: Current date/time for caching
+            
+        Returns:
+            Dict with 'macd', 'macd_signal', 'macd_hist' or None if unavailable
+        """
+        if not self.data_api:
+            return None
+        
+        # Check cache first (cache for the day)
+        cache_key = f"{ticker}_{current_date.strftime('%Y-%m-%d')}"
+        if cache_key in self.daily_macd_cache:
+            return self.daily_macd_cache[cache_key]
+        
+        try:
+            # Fetch daily data (aggregate from 1-minute data or fetch daily if available)
+            # For now, we'll calculate from 1-minute data by aggregating to daily
+            df_1min = self.data_api.get_1min_data(ticker, minutes=390)  # Get full trading day
+            
+            if df_1min is None or len(df_1min) < 50:
+                return None
+            
+            # Aggregate to daily: use last day's data
+            # Group by date and calculate daily OHLCV
+            df_1min['date'] = pd.to_datetime(df_1min['timestamp']).dt.date
+            daily_data = df_1min.groupby('date').agg({
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'close': 'last',
+                'volume': 'sum'
+            }).reset_index()
+            
+            if len(daily_data) < 26:  # Need at least 26 days for MACD calculation
+                return None
+            
+            # Calculate daily MACD
+            daily_data['macd'] = daily_data['close'].ewm(span=12, adjust=False).mean() - daily_data['close'].ewm(span=26, adjust=False).mean()
+            daily_data['macd_signal'] = daily_data['macd'].ewm(span=9, adjust=False).mean()
+            daily_data['macd_hist'] = daily_data['macd'] - daily_data['macd_signal']
+            
+            # Get most recent daily MACD values
+            latest = daily_data.iloc[-1]
+            daily_macd = {
+                'macd': latest['macd'],
+                'macd_signal': latest['macd_signal'],
+                'macd_hist': latest['macd_hist']
+            }
+            
+            # Cache the result
+            self.daily_macd_cache[cache_key] = daily_macd
+            return daily_macd
+            
+        except Exception as e:
+            logger.debug(f"[{ticker}] Error fetching daily MACD: {e}")
+            return None
     
     def _is_fast_mover(self, df: pd.DataFrame, idx: int) -> Tuple[bool, Dict[str, float]]:
         """
@@ -1094,18 +2102,27 @@ class RealtimeTrader:
         # PRIORITY 2 FIX: Use best patterns, but allow others with strong confirmations
         best_patterns = [
             'Strong_Bullish_Setup',  # Multiple indicators align
-            'Volume_Breakout'  # High volume with price breakout
+            'Volume_Breakout',  # High volume with price breakout
+            'Volume_Breakout_Momentum'  # FIX: Accept Volume_Breakout_Momentum (variant of Volume_Breakout)
         ]
         
         # Secondary patterns that are acceptable with strong confirmations
         acceptable_patterns_with_confirmation = [
             'Accumulation_Pattern',  # Volume accumulation with price action
+            'Slow_Accumulation',  # FIX: Accept Slow_Accumulation (variant of Accumulation_Pattern)
             'MACD_Bullish_Cross',  # MACD crossover with momentum
+            'MACD_Acceleration_Breakout',  # FIX: Accept MACD_Acceleration_Breakout (variant of MACD_Bullish_Cross)
             'Consolidation_Breakout',  # FIX: Accept Consolidation_Breakout with strong confirmations
             'Golden_Cross',  # FIX: Accept Golden_Cross with strong confirmations
+            'Golden_Cross_Volume',  # FIX: Accept Golden_Cross_Volume (variant of Golden_Cross)
         ]
         
         current = df.iloc[idx]
+        
+        # FIX: Detect fast mover status for relaxed MA validation
+        is_fast_mover, fast_mover_metrics = self._is_fast_mover(df, idx)
+        volume_ratio = current.get('volume_ratio', 0)
+        fast_mover_momentum = fast_mover_metrics.get('momentum', 0) if is_fast_mover else 0
         
         if signal.pattern_name not in best_patterns:
             # Check if it's an acceptable pattern with strong confirmations
@@ -1115,17 +2132,20 @@ class RealtimeTrader:
                 price_momentum = ((current.get('close', 0) - df.iloc[max(0, idx-5)].get('close', 0)) / 
                                  df.iloc[max(0, idx-5)].get('close', 0)) * 100 if idx >= 5 else 0
                 
-                # Require: volume ratio > 2x AND (price momentum > 3% OR confidence > 75%)
-                if volume_ratio_check >= 2.0 and (price_momentum > 3.0 or signal.confidence >= 0.75):
+                # Require: volume ratio >= 2x AND (price momentum > 3% OR confidence >= 75%)
+                strong_confirmation = (volume_ratio_check >= 2.0 and 
+                                      (price_momentum > 3.0 or signal.confidence >= 0.75))
+                
+                if strong_confirmation:
                     if log_reasons:
-                        logger.info(f"[{signal.ticker}] Accepting secondary pattern '{signal.pattern_name}' with strong confirmations (vol={volume_ratio_check:.2f}x, momentum={price_momentum:.1f}%, conf={signal.confidence*100:.1f}%)")
+                        logger.info(f"[{signal.ticker}] PATTERN ACCEPTED: {signal.pattern_name} with strong confirmations (vol={volume_ratio_check:.2f}x, momentum={price_momentum:.1f}%, conf={signal.confidence*100:.1f}%)")
                     # Pattern accepted, continue validation
                 else:
-                    reason = f"Pattern '{signal.pattern_name}' requires stronger confirmations (vol ratio {volume_ratio_check:.2f}x < 2.0x or momentum {price_momentum:.1f}% < 3% and confidence {signal.confidence*100:.1f}% < 75%)"
+                    reason = f"Pattern '{signal.pattern_name}' requires strong confirmations (vol >= 2x AND (momentum > 3% OR conf >= 75%))"
                     if log_reasons:
                         rejection_reasons.append(reason)
                         logger.debug(f"[{signal.ticker}] REJECTED: {', '.join(rejection_reasons)}")
-                    return False, reason
+                    return False, reason  # Note: This rejection is handled by caller
             else:
                 reason = f"Pattern '{signal.pattern_name}' not in best patterns"
                 if log_reasons:
@@ -1136,8 +2156,21 @@ class RealtimeTrader:
         lookback_20 = df.iloc[idx-20:idx]
         lookback_10 = df.iloc[idx-10:idx]
         
-        # Check if this is a fast mover (exceptional volume and momentum)
-        # MOVED EARLIER: Detect fast mover before critical requirements to apply relaxed rules
+        # PRIORITY FIX: Calculate volume ratio and historical average FIRST (needed for fast mover detection and volume checks)
+        current_volume = current.get('volume', 0)
+        volume_ratio = current.get('volume_ratio', 0)
+        
+        # Calculate historical average volume for volume ratio calculation
+        if len(df) >= 100:
+            historical_avg_volume = df['volume'].tail(100).mean()
+            volume_ratio_long = current_volume / historical_avg_volume if historical_avg_volume > 0 else 0
+        else:
+            avg_volume_20 = df['volume'].tail(20).mean() if len(df) >= 20 else df['volume'].mean()
+            historical_avg_volume = avg_volume_20
+            volume_ratio_long = current_volume / avg_volume_20 if avg_volume_20 > 0 else 0
+        
+        # PRIORITY FIX: Detect fast mover FIRST (before all other checks)
+        # This ensures fast mover status is recognized before volatility and confidence checks
         is_fast_mover, fast_mover_metrics = self._is_fast_mover(df, idx)
         if is_fast_mover:
             logger.info(f"[{signal.ticker}] FAST MOVER detected: vol_ratio={fast_mover_metrics['vol_ratio']:.2f}x, momentum={fast_mover_metrics['momentum']:.2f}%")
@@ -1154,140 +2187,320 @@ class RealtimeTrader:
         
         # === CRITICAL REQUIREMENTS (ALL MUST PASS) ===
         
-        # 1. Price above ALL key moving averages (MANDATORY)
+        # 1. ENHANCED: Price above key moving averages (MANDATORY, with relaxed rules for sustained moves/fast movers)
         close = current.get('close', 0)
         sma5 = current.get('sma_5', 0)
         sma10 = current.get('sma_10', 0)
         sma20 = current.get('sma_20', 0)
-        if not (close > sma5 and close > sma10 and close > sma20):
-            reason = f"Price ${close:.4f} not above all MAs"
-            if log_reasons:
-                rejection_reasons.append(reason)
-            return False, reason  # REJECT if price not above all MAs
         
-        # 2. Moving averages in bullish order (MANDATORY)
-        # RELAXED for fast movers: Allow if price above all MAs even if not perfect order
-        if is_fast_mover:
-            # For fast movers: Only require price above all MAs, allow relaxed MA order
-            # Check if at least 2 of 3 MA pairs are in bullish order
-            ma_order_score = sum([sma5 > sma10, sma10 > sma20])
-            if ma_order_score < 1:  # At least one pair must be in order
-                reason = "MAs not showing bullish alignment (fast mover)"
+        # Check price above all MAs (preferred)
+        price_above_all = (close > sma5 and close > sma10 and close > sma20)
+        
+        if not price_above_all:
+            # For sustained moves or fast movers: Allow if price above longer MAs
+            price_above_longer = (close > sma10 and close > sma20)
+            price_near_sma5 = abs(close - sma5) / sma5 < 0.01 if sma5 > 0 else False  # Within 1% of SMA5
+            
+            # FIX: Relaxed for fast movers - allow if volume >= 4x OR momentum >= 5%
+            fast_mover_momentum = fast_mover_metrics.get('momentum', 0) if is_fast_mover else 0
+            is_strong_fast_mover = is_fast_mover and (volume_ratio >= 4.0 or fast_mover_momentum >= 5.0)
+            
+            # For fast movers with strong volume/momentum: Relax MA requirement
+            if is_strong_fast_mover:
+                if price_above_longer:
+                    logger.info(f"[{signal.ticker}] FAST MOVER: Price above longer MAs (SMA10/SMA20), allowing entry (vol={volume_ratio:.2f}x, momentum={fast_mover_momentum:.2f}%)")
+                    # Allow entry - price is above SMA10 and SMA20, which is sufficient for fast movers
+                else:
+                    reason = f"Price ${close:.4f} not above all MAs and not above longer MAs (SMA10=${sma10:.4f}, SMA20=${sma20:.4f})"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                        logger.info(f"[{signal.ticker}] REJECTED: {reason}")
+                    return False, reason
+            # For sustained moves: Allow if price above longer MAs and within 1% of SMA5
+            elif price_above_longer and price_near_sma5:
+                logger.info(f"[{signal.ticker}] SUSTAINED MOVE: Price above longer MAs and within 1% of SMA5, allowing entry")
+                # Allow entry
+            else:
+                reason = f"Price ${close:.4f} not above all MAs (SMA5=${sma5:.4f}, SMA10=${sma10:.4f}, SMA20=${sma20:.4f})"
                 if log_reasons:
                     rejection_reasons.append(reason)
-                return False, reason
+                    logger.info(f"[{signal.ticker}] REJECTED: {reason}")
+                return False, reason  # REJECT if price not above all MAs
+        
+        # 2. Moving averages in bullish order (MANDATORY)
+        # FIX: RELAXED for fast movers with strong momentum - allow entry even if MAs aren't perfectly aligned
+        if is_fast_mover:
+            # For fast movers with very strong momentum (>50%): Allow entry even if MAs aren't perfectly aligned
+            if fast_mover_momentum >= 50.0:
+                logger.info(f"[{signal.ticker}] FAST MOVER with very strong momentum ({fast_mover_momentum:.2f}%): Relaxing MA alignment requirement")
+                # Allow entry - momentum is so strong that MA alignment is less critical
             else:
-                logger.debug(f"[{signal.ticker}] FAST MOVER: Relaxed MA order check (score: {ma_order_score}/2)")
+                # For regular fast movers: Check if at least one MA pair is in bullish order
+                ma_order_score = sum([sma5 > sma10, sma10 > sma20])
+                if ma_order_score < 1:  # At least one pair must be in order
+                    reason = f"MAs not in bullish order (SMA5=${sma5:.4f}, SMA10=${sma10:.4f}, SMA20=${sma20:.4f})"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                        logger.info(f"[{signal.ticker}] REJECTED: {reason}")
+                    return False, reason
+                else:
+                    logger.debug(f"[{signal.ticker}] FAST MOVER: Relaxed MA order check (score: {ma_order_score}/2)")
         else:
             # Normal stocks: Strict MA order required
             if not (sma5 > sma10 and sma10 > sma20):
-                reason = "MAs not in bullish order"
+                reason = f"MAs not in bullish order (SMA5=${sma5:.4f}, SMA10=${sma10:.4f}, SMA20=${sma20:.4f})"
                 if log_reasons:
                     rejection_reasons.append(reason)
+                    logger.info(f"[{signal.ticker}] REJECTED: {reason}")
                 return False, reason  # REJECT if MAs not in bullish order
         
-        # 3. Volume must be above average AND absolute volume must be sufficient (MANDATORY)
-        volume_ratio = current.get('volume_ratio', 0)
-        if volume_ratio < 1.5:  # Must be at least 1.5x average (increased for stronger confirmation)
-            reason = f"Volume ratio {volume_ratio:.2f}x < 1.5x required"
+        # 3. Volume must be above average (MANDATORY)
+        # FIX: Relaxed for fast movers - lower threshold if already detected as fast mover
+        # Volume ratio check happens first - if volume ratio is high enough, stock is clearly moving
+        min_volume_ratio = 1.5
+        if is_fast_mover and fast_mover_momentum >= 5.0:
+            # For fast movers with strong momentum, allow slightly lower volume ratio
+            min_volume_ratio = 1.4
+            logger.debug(f"[{signal.ticker}] FAST MOVER: Using relaxed volume ratio threshold {min_volume_ratio}x (momentum={fast_mover_momentum:.2f}%)")
+        
+        if volume_ratio < min_volume_ratio:
+            reason = f"Volume ratio {volume_ratio:.2f}x < {min_volume_ratio}x required"
             if log_reasons:
                 rejection_reasons.append(reason)
+                logger.info(f"[{signal.ticker}] REJECTED: {reason}")
             return False, reason  # REJECT if volume not strong
         
-        # 3.5. Minimum absolute volume requirement (MANDATORY) - avoid low volume stocks
-        # FIX: Use time-based volume thresholds (100K-500K based on time of day)
-        current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
-        et = pytz.timezone('US/Eastern')
-        if current_time.tz is None:
-            current_time = et.localize(current_time)
+        # 3.5. Minimum absolute volume requirement (MANDATORY) - avoid low volume and extremely slow moving stocks
+        # ENHANCED: Use calculated volume thresholds based on stock's historical average volume
+        # Purpose: Filter out low-volume/no-movement stocks (liquidity filter)
+        
+        # Calculate historical average volume (use longer period for better baseline)
+        if len(df) >= 100:
+            historical_avg_volume = df['volume'].tail(100).mean()
+        elif len(df) >= 50:
+            historical_avg_volume = df['volume'].tail(50).mean()
         else:
-            current_time = current_time.astimezone(et)
+            historical_avg_volume = df['volume'].mean() if len(df) > 0 else 0
         
-        hour = current_time.hour
-        
-        # Time-based volume thresholds
-        if hour < 6:  # 4-6 AM
-            min_daily_volume = 100000  # 100K
-        elif hour < 8:  # 6-8 AM
-            min_daily_volume = 200000  # 200K
-        elif hour < 10:  # 8-10 AM
-            min_daily_volume = 300000  # 300K
-        else:  # 10 AM+
-            min_daily_volume = 500000  # 500K
-        
-        # Check total volume over recent periods (simulating daily volume check)
-        if len(df) >= 60:
-            recent_volumes = df['volume'].tail(60).values
-            total_volume_60min = recent_volumes.sum()
-            if total_volume_60min < min_daily_volume:
-                reason = f"Low volume stock (total {total_volume_60min:,.0f} < {min_daily_volume:,.0f} over 60 min, threshold for hour {hour})"
-                if log_reasons:
-                    rejection_reasons.append(reason)
-                return False, reason  # REJECT if total volume too low
-        elif len(df) >= 20:
-            # If less than 60 minutes, check 20-minute total and extrapolate
-            recent_volumes = df['volume'].tail(20).values
-            total_volume_20min = recent_volumes.sum()
-            # Extrapolate to 60 minutes: need at least min_daily_volume/3 over 20 min
-            min_volume_20min = min_daily_volume // 3
-            if total_volume_20min < min_volume_20min:
-                reason = f"Low volume stock (total {total_volume_20min:,.0f} < {min_volume_20min:,.0f} over 20 min, extrapolated, threshold for hour {hour})"
-                if log_reasons:
-                    rejection_reasons.append(reason)
-                return False, reason  # REJECT if volume too low
+        # Calculate volume ratio (current vs historical average)
+        current_volume = current.get('volume', 0)
+        if len(df) >= 100:
+            volume_ratio_long = current_volume / historical_avg_volume if historical_avg_volume > 0 else 0
         else:
-            # If very little data, check current volume (should be at least 10K for single bar)
-            current_volume = current.get('volume', 0)
-            min_current_volume = 10000
-            if current_volume < min_current_volume:
-                reason = f"Volume {current_volume:,.0f} < {min_current_volume:,.0f} minimum required"
-                if log_reasons:
-                    rejection_reasons.append(reason)
-                return False, reason  # REJECT if volume too low
+            avg_volume_20 = df['volume'].tail(20).mean() if len(df) >= 20 else historical_avg_volume
+            volume_ratio_long = current_volume / avg_volume_20 if avg_volume_20 > 0 else 0
         
-        # Check average volume over recent periods - additional liquidity check
-        # Calculate average volume over 20 periods
-        # PRIORITY 1 FIX: Use volume ratio as primary check, relax threshold for fast movers
+        # PRIORITY: Use volume ratio as primary indicator
+        # If volume ratio is exceptional (>= 5x), skip daily volume check (stock is clearly moving)
+        if volume_ratio_long >= 5.0:
+            if log_reasons:
+                logger.info(f"[{signal.ticker}] EXCEPTIONAL VOLUME: Volume ratio {volume_ratio_long:.2f}x >= 5x, skipping daily volume check")
+            # Skip daily volume check - exceptional volume ratio indicates sufficient liquidity
+        else:
+            # For stocks with moderate volume ratio, check daily volume to filter out low-volume stocks
+            # Calculate threshold based on historical average and time of day
+            current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+            et = pytz.timezone('US/Eastern')
+            if current_time.tz is None:
+                current_time = et.localize(current_time)
+            else:
+                current_time = current_time.astimezone(et)
+            
+            hour = current_time.hour
+            
+            # Calculate minimum daily volume based on historical average and time of day
+            # Early morning: Lower threshold (volume hasn't accumulated yet)
+            # Regular hours: Higher threshold (full trading day)
+            # After-hours: Lower threshold (lower absolute volume but high ratio)
+            
+            if hour < 6:  # 4-6 AM (premarket)
+                # Use 20x historical average (very low threshold for early morning)
+                min_daily_volume = max(historical_avg_volume * 20, 50000)  # At least 50K absolute minimum
+            elif hour < 8:  # 6-8 AM (early morning)
+                # Use 40x historical average
+                min_daily_volume = max(historical_avg_volume * 40, 100000)  # At least 100K absolute minimum
+            elif hour < 10:  # 8-10 AM (mid-morning)
+                # Use 60x historical average
+                min_daily_volume = max(historical_avg_volume * 60, 150000)  # At least 150K absolute minimum
+            elif hour >= 16 and hour < 20:  # After-hours (4 PM - 8 PM)
+                # Use 30x historical average (lower for after-hours)
+                min_daily_volume = max(historical_avg_volume * 30, 100000)  # At least 100K absolute minimum
+                if log_reasons:
+                    logger.debug(f"[{signal.ticker}] AFTER-HOURS: Using calculated threshold {min_daily_volume:,.0f} (historical avg: {historical_avg_volume:,.0f})")
+            elif hour >= 15 and hour < 16:  # Late-day (3 PM - 4 PM)
+                # Use 50x historical average
+                min_daily_volume = max(historical_avg_volume * 50, 150000)  # At least 150K absolute minimum
+                if log_reasons:
+                    logger.debug(f"[{signal.ticker}] LATE-DAY: Using calculated threshold {min_daily_volume:,.0f} (historical avg: {historical_avg_volume:,.0f})")
+            else:  # 10 AM - 3 PM (regular hours)
+                # Use 100x historical average (full trading day)
+                min_daily_volume = max(historical_avg_volume * 100, 200000)  # At least 200K absolute minimum
+            
+            # Check total volume over recent periods (simulating daily volume check)
+            if len(df) >= 60:
+                recent_volumes = df['volume'].tail(60).values
+                total_volume_60min = recent_volumes.sum()
+                if total_volume_60min < min_daily_volume:
+                    reason = f"Low volume stock (total {total_volume_60min:,.0f} < {min_daily_volume:,.0f} over 60 min, calculated from historical avg {historical_avg_volume:,.0f})"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                    return False, reason  # REJECT if total volume too low
+            elif len(df) >= 20:
+                # If less than 60 minutes, check 20-minute total and extrapolate
+                recent_volumes = df['volume'].tail(20).values
+                total_volume_20min = recent_volumes.sum()
+                # Extrapolate to 60 minutes: need at least min_daily_volume/3 over 20 min
+                min_volume_20min = min_daily_volume // 3
+                if total_volume_20min < min_volume_20min:
+                    reason = f"Low volume stock (total {total_volume_20min:,.0f} < {min_volume_20min:,.0f} over 20 min, extrapolated, calculated from historical avg {historical_avg_volume:,.0f})"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                    return False, reason  # REJECT if volume too low
+            else:
+                # If very little data, check current volume (should be at least 2x historical average)
+                min_current_volume = max(historical_avg_volume * 2, 10000)  # At least 2x average or 10K absolute minimum
+                if current_volume < min_current_volume:
+                    reason = f"Volume {current_volume:,.0f} < {min_current_volume:,.0f} minimum required (calculated from historical avg {historical_avg_volume:,.0f})"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                    return False, reason  # REJECT if volume too low
+        
+        # ENHANCED: Check average volume - use rolling average from move start instead of fixed window
+        # This avoids diluting average with pre-move low-volume periods
         if len(df) >= 20:
-            avg_volume_20 = df['volume'].tail(20).mean()
+            # Find when volume ratio first exceeded 2x (move start)
+            move_start_idx = None
+            for i in range(max(0, idx-20), idx+1):
+                if i < len(df):
+                    vol_ratio_at_i = df.iloc[i].get('volume_ratio', 0)
+                    if vol_ratio_at_i >= 2.0:
+                        move_start_idx = i
+                        break
             
             # Calculate volume ratio (current vs historical average)
-            # Use longer-term average for comparison (if available)
             if len(df) >= 100:
                 historical_avg = df['volume'].tail(100).mean()
                 volume_ratio_long = current.get('volume', 0) / historical_avg if historical_avg > 0 else 0
             else:
-                historical_avg = avg_volume_20
-                volume_ratio_long = volume_ratio  # Use current volume_ratio if available
+                avg_volume_20 = df['volume'].tail(20).mean()
+                volume_ratio_long = current.get('volume', 0) / avg_volume_20 if avg_volume_20 > 0 else 0
             
-            # For fast movers (volume ratio > 3x), relax absolute volume requirement
+            # For fast movers (volume ratio >= 3x), skip per-minute average check
             is_fast_mover_volume = volume_ratio_long >= 3.0
             
             if is_fast_mover_volume:
-                # Fast movers: Lower threshold to 30K/minute (was 100K)
-                min_avg_volume = 30000
+                # Fast movers: Skip per-minute average check (daily volume check is sufficient)
                 if log_reasons:
-                    logger.info(f"[{signal.ticker}] FAST MOVER VOLUME: Ratio {volume_ratio_long:.2f}x, using relaxed threshold {min_avg_volume:,}")
+                    logger.info(f"[{signal.ticker}] FAST MOVER: Skipping per-minute average check (vol_ratio={volume_ratio_long:.2f}x)")
             else:
-                # Normal stocks: Use market cap-adjusted threshold
-                # Small cap (<$50M): 30K, Mid cap ($50M-$1B): 50K, Large cap (>$1B): 100K
-                # For now, use 50K as default (can be enhanced with market cap data)
-                min_avg_volume = 50000
-            
-            if avg_volume_20 < min_avg_volume:
-                reason = f"Low volume stock (avg {avg_volume_20:,.0f} < {min_avg_volume:,} required)"
-                if log_reasons:
-                    rejection_reasons.append(reason)
-                return False, reason  # REJECT if average volume too low
+                # Use rolling average from move start if found, otherwise fallback to fixed window
+                if move_start_idx is not None:
+                    volumes_since_move = df.iloc[move_start_idx:idx+1]['volume'].values
+                    avg_volume_since_move = volumes_since_move.mean() if len(volumes_since_move) > 0 else 0
+                    
+                    # Calculate minimum based on historical average (use 0.5x historical average as minimum)
+                    # This ensures we're filtering out truly low-volume stocks, not just stocks with lower baseline volume
+                    min_avg_volume = max(historical_avg_volume * 0.5, 30000)  # At least 0.5x historical average or 30K absolute minimum
+                    
+                    if avg_volume_since_move < min_avg_volume:
+                        reason = f"Low volume since move start (avg {avg_volume_since_move:,.0f} < {min_avg_volume:,.0f} required, calculated from historical avg {historical_avg_volume:,.0f})"
+                        if log_reasons:
+                            rejection_reasons.append(reason)
+                        return False, reason
+                else:
+                    # Fallback to fixed window if move start not found
+                    avg_volume_20 = df['volume'].tail(20).mean()
+                    # Calculate minimum based on historical average
+                    min_avg_volume = max(historical_avg_volume * 0.5, 30000)  # At least 0.5x historical average or 30K absolute minimum
+                    
+                    if avg_volume_20 < min_avg_volume:
+                        reason = f"Low volume stock (avg {avg_volume_20:,.0f} < {min_avg_volume:,.0f} required, calculated from historical avg {historical_avg_volume:,.0f})"
+                        if log_reasons:
+                            rejection_reasons.append(reason)
+                        return False, reason
         
         # 4. MACD must be bullish (MANDATORY)
+        # ENHANCED: Multi-timeframe MACD analysis - check daily MACD when 1-minute MACD is bearish
         macd = current.get('macd', 0)
         macd_signal = current.get('macd_signal', 0)
-        if macd <= macd_signal:
-            reason = "MACD not bullish (MACD <= Signal)"
-            if log_reasons:
-                rejection_reasons.append(reason)
-            return False, reason  # REJECT if MACD not bullish
+        macd_hist = current.get('macd_hist', 0)
+        
+        # Check if 1-minute MACD is bearish
+        one_min_macd_bearish = macd <= macd_signal
+        
+        if one_min_macd_bearish:
+            # PRIORITY FIX: Multi-timeframe MACD analysis
+            # If 1-minute MACD is bearish, check daily MACD
+            # If daily MACD is bullish AND volume exceptional (6x+), relax 1-minute requirement
+            
+            # Get volume ratio for exceptional volume check
+            vol_ratio = fast_mover_metrics.get('vol_ratio', volume_ratio_long) if is_fast_mover else volume_ratio_long
+            
+            # Check daily MACD if volume is exceptional (6x+) or fast mover
+            if vol_ratio >= 6.0 or is_fast_mover:
+                current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+                daily_macd = self._get_daily_macd(signal.ticker, current_time)
+                
+                if daily_macd:
+                    daily_macd_bullish = daily_macd['macd'] > daily_macd['macd_signal']
+                    daily_hist_positive = daily_macd['macd_hist'] > 0
+                    
+                    if daily_macd_bullish and vol_ratio >= 6.0:
+                        # Daily MACD is bullish AND volume exceptional - allow entry
+                        # Check if 1-minute MACD is improving (trending up) even if not crossed
+                        if idx >= 2:
+                            prev_macd = df.iloc[idx-1].get('macd', 0)
+                            prev_signal = df.iloc[idx-1].get('macd_signal', 0)
+                            # Check if MACD is improving (getting closer to signal or histogram improving)
+                            macd_improving = (macd > prev_macd) or (macd_hist > df.iloc[idx-1].get('macd_hist', 0))
+                            
+                            if macd_improving:
+                                logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD: Daily MACD bullish, 1-min improving (vol={vol_ratio:.2f}x), allowing entry")
+                                # Allow entry - daily MACD confirms trend, 1-minute is improving
+                            else:
+                                reason = f"MACD not bullish (1-min: {macd:.4f} <= {macd_signal:.4f}, daily bullish but 1-min not improving)"
+                                if log_reasons:
+                                    rejection_reasons.append(reason)
+                                return False, reason
+                        else:
+                            # Not enough history to check improvement, but daily MACD is bullish
+                            logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD: Daily MACD bullish (vol={vol_ratio:.2f}x), allowing entry (insufficient history for improvement check)")
+                            # Allow entry - daily MACD confirms trend
+                    elif daily_macd_bullish and is_fast_mover:
+                        # Daily MACD is bullish AND fast mover - check if 1-minute MACD is improving
+                        if idx >= 2:
+                            prev_macd = df.iloc[idx-1].get('macd', 0)
+                            macd_improving = (macd > prev_macd) or (macd_hist > df.iloc[idx-1].get('macd_hist', 0))
+                            
+                            if macd_improving:
+                                logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD: Daily MACD bullish, 1-min improving (fast mover), allowing entry")
+                                # Allow entry
+                            else:
+                                reason = f"MACD not bullish (1-min: {macd:.4f} <= {macd_signal:.4f}, daily bullish but 1-min not improving)"
+                                if log_reasons:
+                                    rejection_reasons.append(reason)
+                                return False, reason
+                        else:
+                            logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD: Daily MACD bullish (fast mover), allowing entry")
+                            # Allow entry
+                    else:
+                        # Daily MACD not bullish or volume not exceptional
+                        reason = f"MACD not bullish (1-min: {macd:.4f} <= {macd_signal:.4f}, daily MACD not bullish or volume not exceptional)"
+                        if log_reasons:
+                            rejection_reasons.append(reason)
+                        return False, reason
+                else:
+                    # Could not fetch daily MACD - use strict 1-minute check
+                    reason = f"MACD not bullish (MACD {macd:.4f} <= Signal {macd_signal:.4f}) and daily MACD unavailable"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                    return False, reason
+            else:
+                # Volume not exceptional and 1-minute MACD is bearish - reject
+                reason = f"MACD not bullish (MACD {macd:.4f} <= Signal {macd_signal:.4f}) and volume not exceptional (vol={vol_ratio:.2f}x < 6x)"
+                if log_reasons:
+                    rejection_reasons.append(reason)
+                return False, reason
         
         # 5. Price must be making higher highs (MANDATORY - no recent rejection)
         if len(lookback_20) >= 10:
@@ -1368,21 +2581,38 @@ class RealtimeTrader:
                     return False, reason  # REJECT if price not showing upward momentum
         
         # 10. Price stability check (avoid high volatility entries) (MANDATORY)
+        # PRIORITY FIX: Check volatility AFTER fast mover detection
         # Fast movers bypass this check - high volatility is expected for breakouts
+        # For extreme fast movers (volume >= 10x OR momentum >= 50%), skip volatility check entirely
         # INCREASED threshold from 8% to 15% for normal stocks to allow more volatile breakouts
-        if not is_fast_mover:
+        
+        # Check if extreme fast mover (volume >= 10x OR momentum >= 50%)
+        is_extreme_fast_mover = False
+        if is_fast_mover:
+            vol_ratio = fast_mover_metrics.get('vol_ratio', 0)
+            momentum = fast_mover_metrics.get('momentum', 0)
+            if vol_ratio >= 10.0 or momentum >= 50.0:
+                is_extreme_fast_mover = True
+                logger.info(f"[{signal.ticker}] EXTREME FAST MOVER: Vol {vol_ratio:.2f}x OR Momentum {momentum:.2f}%, skipping volatility check")
+        
+        if is_fast_mover or is_extreme_fast_mover:
+            # Fast movers: Bypass volatility check (high volatility is expected)
+            logger.info(f"[{signal.ticker}] FAST MOVER: Bypassing volatility check")
+        else:
+            # Normal stocks: Check volatility
             if len(lookback_10) >= 5:
                 recent_highs = lookback_10['high'].tail(5).values
                 recent_lows = lookback_10['low'].tail(5).values
                 if len(recent_highs) > 0 and len(recent_lows) > 0:
                     price_range_pct = ((max(recent_highs) - min(recent_lows)) / min(recent_lows)) * 100
-                    if price_range_pct > 15.0:  # Too volatile (15%+ range in 5 periods, was 8%)
-                        reason = f"Too volatile ({price_range_pct:.1f}% range in 5 periods)"
+                    # For normal stocks: 15% threshold
+                    # For stocks with volume ratio 2x-3x: 20% threshold (moderate volatility acceptable)
+                    volatility_threshold = 20.0 if volume_ratio >= 2.0 else 15.0
+                    if price_range_pct > volatility_threshold:
+                        reason = f"Too volatile ({price_range_pct:.1f}% range in 5 periods, threshold {volatility_threshold:.1f}%)"
                         if log_reasons:
                             rejection_reasons.append(reason)
                         return False, reason  # REJECT if too volatile
-        else:
-            logger.info(f"[{signal.ticker}] FAST MOVER: Bypassing volatility check")
         
         # === SCORING SYSTEM FOR ADDITIONAL CONFIRMATIONS ===
         perfect_setup_score = 0
@@ -1443,12 +2673,60 @@ class RealtimeTrader:
             perfect_setup_score += 0.5
         
         # 5. MACD histogram must be positive AND accelerating (MANDATORY)
+        # ENHANCED: Multi-timeframe MACD analysis - allow histogram to be improving (trending up) even if negative
         macd_hist = current.get('macd_hist', 0)
-        if macd_hist <= 0:
-            reason = "MACD histogram not positive"
-            if log_reasons:
-                rejection_reasons.append(reason)
-            return False, reason  # REJECT if histogram not positive
+        histogram_positive = macd_hist > 0
+        
+        if not histogram_positive:
+            # PRIORITY FIX: Multi-timeframe MACD analysis for histogram
+            # If 1-minute histogram is negative, check daily MACD
+            # If daily MACD is bullish AND volume exceptional (6x+), allow histogram to be improving (trending up)
+            
+            # Get volume ratio for exceptional volume check
+            vol_ratio = fast_mover_metrics.get('vol_ratio', volume_ratio_long) if is_fast_mover else volume_ratio_long
+            
+            # Check daily MACD if volume is exceptional (6x+) or fast mover
+            if vol_ratio >= 6.0 or is_fast_mover:
+                current_time = pd.to_datetime(current.get('timestamp', datetime.now()))
+                daily_macd = self._get_daily_macd(signal.ticker, current_time)
+                
+                if daily_macd:
+                    daily_macd_bullish = daily_macd['macd'] > daily_macd['macd_signal']
+                    daily_hist_positive = daily_macd['macd_hist'] > 0
+                    
+                    # Check if 1-minute histogram is improving (trending up) even if negative
+                    histogram_improving = False
+                    if idx >= 2:
+                        prev_hist = df.iloc[idx-1].get('macd_hist', 0)
+                        prev_prev_hist = df.iloc[idx-2].get('macd_hist', 0) if idx >= 2 else prev_hist
+                        # Histogram is improving if it's increasing (trending up)
+                        histogram_improving = (macd_hist > prev_hist) and (prev_hist > prev_prev_hist)
+                    
+                    if daily_macd_bullish and (daily_hist_positive or histogram_improving) and vol_ratio >= 6.0:
+                        # Daily MACD bullish, histogram improving, volume exceptional - allow entry
+                        logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD HIST: Daily MACD bullish, 1-min hist improving (vol={vol_ratio:.2f}x), allowing entry")
+                        # Allow entry - histogram is improving even if negative
+                    elif daily_macd_bullish and histogram_improving and is_fast_mover:
+                        # Daily MACD bullish, histogram improving, fast mover - allow entry
+                        logger.info(f"[{signal.ticker}] MULTI-TIMEFRAME MACD HIST: Daily MACD bullish, 1-min hist improving (fast mover), allowing entry")
+                        # Allow entry
+                    else:
+                        reason = f"MACD histogram not positive ({macd_hist:.4f}) and not improving with daily MACD confirmation"
+                        if log_reasons:
+                            rejection_reasons.append(reason)
+                        return False, reason
+                else:
+                    # Could not fetch daily MACD - use strict 1-minute check
+                    reason = f"MACD histogram not positive ({macd_hist:.4f}) and daily MACD unavailable"
+                    if log_reasons:
+                        rejection_reasons.append(reason)
+                    return False, reason
+            else:
+                # Volume not exceptional and histogram is negative - reject
+                reason = f"MACD histogram not positive ({macd_hist:.4f}) and volume not exceptional (vol={vol_ratio:.2f}x < 6x)"
+                if log_reasons:
+                    rejection_reasons.append(reason)
+                return False, reason
         
         # Require acceleration (not just positive)
         # Reduced requirements: 3% for normal stocks, 2% for fast movers (was 5% and 2%)
@@ -1523,13 +2801,21 @@ class RealtimeTrader:
         # === ADDITIONAL SAFETY CHECKS (AUTO-REJECT) ===
         
         # Reject if price is too extended (recent massive move)
-        # RELAXED for fast movers: Allow up to 20% move in 5 periods (was 10% for all)
-        max_extended_pct = 20.0 if is_fast_mover else 10.0
-        if price_change_5 > max_extended_pct:
-            reason = f"Price too extended ({price_change_5:.1f}% in 5 periods, max {max_extended_pct}% allowed)"
-            if log_reasons:
-                rejection_reasons.append(reason)
-            return False, reason
+        # FIX: Surge entries bypass this check entirely (they are explosive moves by definition)
+        # FIX: For fast movers, allow up to 20% move in 5 periods (was 10% for all)
+        # FIX: For surge entries, allow up to 50% move in 5 periods
+        is_surge_entry = signal.pattern_name == 'PRICE_VOLUME_SURGE'
+        if is_surge_entry:
+            # Surge entries bypass "price too extended" check - these are explosive moves by definition
+            # Surge detection already validates that the move is legitimate (volume >= 5x AND price change >= 30%)
+            pass  # Skip this check for surge entries
+        else:
+            max_extended_pct = 20.0 if is_fast_mover else 10.0
+            if price_change_5 > max_extended_pct:
+                reason = f"Price too extended ({price_change_5:.1f}% in 5 periods, max {max_extended_pct}% allowed)"
+                if log_reasons:
+                    rejection_reasons.append(reason)
+                return False, reason
         
         # Reject if volume is declining significantly (lack of interest)
         if len(lookback_10) >= 5:
@@ -1545,8 +2831,11 @@ class RealtimeTrader:
                     return False, reason  # Volume declining significantly
         
         # Reject if RSI is extremely overbought (>85) or oversold (<25)
-        if rsi > 85 or rsi < 25:  # More extreme thresholds
-            reason = f"RSI {rsi:.1f} out of range (overbought/oversold)"
+        # FIX: Relax RSI overbought rejection for fast movers with exceptional volume
+        # FIX: Allow RSI up to 90 for fast movers with volume >= 5x (explosive moves can stay overbought)
+        rsi_threshold = 90.0 if (is_fast_mover and volume_ratio >= 5.0) else 85.0
+        if rsi > rsi_threshold or rsi < 25:  # More extreme thresholds
+            reason = f"RSI {rsi:.1f} out of range (overbought/oversold, threshold {rsi_threshold:.1f})"
             if log_reasons:
                 rejection_reasons.append(reason)
             return False, reason
@@ -2065,10 +3354,22 @@ class RealtimeTrader:
         # Check if this is a slow mover entry
         is_slow_mover_entry = signal.indicators.get('is_slow_mover_entry', False) if signal.indicators else False
         
+        # Check if this is a surge entry
+        is_surge_entry = signal.pattern_name == 'PRICE_VOLUME_SURGE'
+        
+        # SURGE ENTRIES: Use surge-specific stop loss (12% instead of default)
+        if is_surge_entry:
+            stop_loss = signal.price * (1 - self.surge_exit_hard_stop_pct / 100)
+            logger.info(f"[{signal.ticker}] SURGE ENTRY: Using surge-specific stop loss {self.surge_exit_hard_stop_pct:.1f}% at ${stop_loss:.4f}")
+        
         # IMPROVED: Set dynamic profit targets based on fast mover strength
         # Very strong fast movers need much higher targets to capture big runs
         if signal.target_price:
             target_price = signal.target_price
+        elif is_surge_entry:
+            # Surge entries: Use 25% target (aggressive for explosive moves)
+            target_price = signal.price * 1.25
+            logger.info(f"[{signal.ticker}] SURGE ENTRY: Setting 25% profit target")
         elif is_fast_mover_entry:
             # Fast movers: Use higher profit targets based on strength
             if fast_mover_vol_ratio >= 5.0 or fast_mover_momentum >= 10.0:
@@ -2099,7 +3400,8 @@ class RealtimeTrader:
             current_price=signal.price,
             max_price_reached=signal.price,
             original_shares=0.0,  # Will be set when shares are assigned
-            is_slow_mover_entry=is_slow_mover_entry
+            is_slow_mover_entry=is_slow_mover_entry,
+            is_surge_entry=is_surge_entry
         )
         
         # Store fast mover metrics in position for exit logic (use indicators dict if available)

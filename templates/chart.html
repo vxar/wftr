@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ ticker }} - Trade Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            color: #1f2937;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .back-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .trades-list {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .trades-list h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th {
+            background: #f9fafb;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        tr:hover {
+            background: #f3f4f6;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .badge.win {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge.loss {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .error {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .controls h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #6b7280;
+            font-weight: 600;
+        }
+        
+        .time-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .time-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .time-input-group label {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .time-input-group input {
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 13px;
+            width: 180px;
+        }
+        
+        .time-input-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #2563eb;
+            color: white;
+        }
+        
+        .btn:hover {
+            background: #1e40af;
+        }
+        
+        .btn-secondary {
+            background: #6b7280;
+        }
+        
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        
+        .zoom-hint {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ ticker }} - Trade Chart</h1>
+            <a href="/" class="back-link">← Back to Dashboard</a>
+        </div>
+        
+        {% if error %}
+        <div class="error">
+            <strong>Error:</strong> {{ error }}
+        </div>
+        {% else %}
+        
+        {% if chart_data %}
+        <div class="controls">
+            <h3>Time Range Controls</h3>
+            <div class="time-controls">
+                <div class="time-input-group">
+                    <label>Start Time</label>
+                    <input type="datetime-local" id="startTime" />
+                </div>
+                <div class="time-input-group">
+                    <label>End Time</label>
+                    <input type="datetime-local" id="endTime" />
+                </div>
+            </div>
+            <div class="control-buttons">
+                <button class="btn" id="setRangeBtn" type="button">Set Range</button>
+                <button class="btn btn-secondary" id="resetZoomBtn" type="button">Reset Zoom</button>
+                <button class="btn btn-secondary" id="zoomToTradesBtn" type="button">Zoom to Trades</button>
+            </div>
+            <div class="zoom-hint">
+                Tip: Use mouse wheel to zoom, click and drag to pan, or use the time range controls above
+            </div>
+        </div>
+        <div class="chart-container">
+            <canvas id="priceChart" style="max-height: 600px;"></canvas>
+        </div>
+        {% else %}
+        <div class="loading">
+            <p>No chart data available for {{ ticker }}</p>
+        </div>
+        {% endif %}
+        
+        {% if trades %}
+        <div class="trades-list">
+            <h2>Trades for {{ ticker }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Entry Time</th>
+                        <th>Exit Time</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
+                        <th>P&L</th>
+                        <th>P&L %</th>
+                        <th>Pattern</th>
+                        <th>Exit Reason</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trade in trades %}
+                    <tr>
+                        <td>{{ trade.entry_time }}</td>
+                        <td>{{ trade.exit_time }}</td>
+                        <td>${{ "%.4f"|format(trade.entry_price) }}</td>
+                        <td>${{ "%.4f"|format(trade.exit_price) }}</td>
+                        <td>${{ "%.2f"|format(trade.pnl_dollars) }}</td>
+                        <td>{{ "%.2f"|format(trade.pnl_pct) }}%</td>
+                        <td>{{ trade.entry_pattern }}</td>
+                        <td>{{ trade.exit_reason }}</td>
+                        <td><span class="badge {{ trade.status.lower() }}">{{ trade.status }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="trades-list">
+            <p>No trades found for {{ ticker }}</p>
+        </div>
+        {% endif %}
+        
+        {% endif %}
+    </div>
+    
+    {% if chart_data %}
+    <script>
+        const chartData = {{ chart_data | tojson }};
+        const trades = {{ trades | tojson }};
+        
+        let priceChart = null;
+        
+        // Initialize time inputs with data range
+        function initializeTimeInputs() {
+            if (chartData.timestamps.length === 0) return;
+            
+            const firstTime = new Date(chartData.timestamps[0]);
+            const lastTime = new Date(chartData.timestamps[chartData.timestamps.length - 1]);
+            
+            // Format for datetime-local input (YYYY-MM-DDTHH:mm)
+            const formatForInput = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
+            
+            document.getElementById('startTime').value = formatForInput(firstTime);
+            document.getElementById('endTime').value = formatForInput(lastTime);
+        }
+        
+        // Set time range on chart
+        function setTimeRange() {
+            if (!priceChart) {
+                console.error('Chart not initialized');
+                alert('Chart not ready. Please wait a moment and try again.');
+                return;
+            }
+            
+            const startInput = document.getElementById('startTime');
+            const endInput = document.getElementById('endTime');
+            
+            if (!startInput || !endInput) {
+                alert('Time input fields not found');
+                return;
+            }
+            
+            const startValue = startInput.value;
+            const endValue = endInput.value;
+            
+            if (!startValue || !endValue) {
+                alert('Please select both start and end times');
+                return;
+            }
+            
+            const startTime = new Date(startValue);
+            const endTime = new Date(endValue);
+            
+            if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+                alert('Invalid date format');
+                return;
+            }
+            
+            if (startTime >= endTime) {
+                alert('Start time must be before end time');
+                return;
+            }
+            
+            try {
+                // Get the x scale
+                const xScale = priceChart.scales.x;
+                if (!xScale) {
+                    alert('Chart scale not available');
+                    return;
+                }
+                
+                // Update scale options
+                if (xScale.options) {
+                    xScale.options.min = startTime.getTime();
+                    xScale.options.max = endTime.getTime();
+                }
+                
+                // Force update the scale
+                xScale.min = startTime.getTime();
+                xScale.max = endTime.getTime();
+                
+                // Update the chart without animation
+                priceChart.update('none');
+                
+                console.log('Time range set:', startTime, 'to', endTime);
+            } catch (error) {
+                console.error('Error setting time range:', error);
+                alert('Error setting time range: ' + error.message);
+            }
+        }
+        
+        // Reset zoom
+        function resetZoom() {
+            if (!priceChart) {
+                console.error('Chart not initialized');
+                alert('Chart not ready. Please wait a moment and try again.');
+                return;
+            }
+            
+            try {
+                // Try the zoom plugin's resetZoom method first
+                if (typeof priceChart.resetZoom === 'function') {
+                    priceChart.resetZoom();
+                    console.log('Zoom reset using resetZoom()');
+                    return;
+                }
+                
+                // Fallback: reset scale limits
+                const xScale = priceChart.scales.x;
+                if (!xScale) {
+                    alert('Chart scale not available');
+                    return;
+                }
+                
+                // Remove min/max from options
+                if (xScale.options) {
+                    delete xScale.options.min;
+                    delete xScale.options.max;
+                }
+                
+                // Remove min/max from scale
+                xScale.min = undefined;
+                xScale.max = undefined;
+                
+                // Update the chart
+                priceChart.update();
+                
+                console.log('Zoom reset');
+            } catch (error) {
+                console.error('Error resetting zoom:', error);
+                alert('Error resetting zoom: ' + error.message);
+            }
+        }
+        
+        // Zoom to show all trades
+        function zoomToTrades() {
+            if (!priceChart) {
+                console.error('Chart not initialized');
+                return;
+            }
+            
+            if (!trades || trades.length === 0) {
+                alert('No trades found to zoom to');
+                return;
+            }
+            
+            let minTime = null;
+            let maxTime = null;
+            
+            trades.forEach(trade => {
+                try {
+                    const entryTime = new Date(trade.entry_time);
+                    const exitTime = new Date(trade.exit_time);
+                    
+                    if (!isNaN(entryTime.getTime())) {
+                        if (minTime === null || entryTime < minTime) minTime = entryTime;
+                        if (maxTime === null || entryTime > maxTime) maxTime = entryTime;
+                    }
+                    if (!isNaN(exitTime.getTime())) {
+                        if (minTime === null || exitTime < minTime) minTime = exitTime;
+                        if (maxTime === null || exitTime > maxTime) maxTime = exitTime;
+                    }
+                } catch (e) {
+                    console.warn('Error processing trade time:', e);
+                }
+            });
+            
+            if (!minTime || !maxTime) {
+                alert('Could not determine trade time range');
+                return;
+            }
+            
+            // Add padding (30 minutes before and after)
+            const padding = 30 * 60 * 1000; // 30 minutes in milliseconds
+            minTime = new Date(minTime.getTime() - padding);
+            maxTime = new Date(maxTime.getTime() + padding);
+            
+            try {
+                // Update the scale to zoom to trades
+                const xScale = priceChart.scales.x;
+                if (!xScale) {
+                    alert('Chart scale not available');
+                    return;
+                }
+                
+                // Set the min and max on the scale
+                if (xScale.options) {
+                    xScale.options.min = minTime.getTime();
+                    xScale.options.max = maxTime.getTime();
+                }
+                
+                // Also set directly on the scale
+                xScale.min = minTime.getTime();
+                xScale.max = maxTime.getTime();
+                
+                // Update the chart without animation
+                priceChart.update('none');
+                
+                console.log('Zoomed to trades:', minTime, 'to', maxTime);
+            } catch (error) {
+                console.error('Error zooming to trades:', error);
+                alert('Error zooming to trades: ' + error.message);
+            }
+        }
+        
+        // Create chart
+        // Create chart
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        
+        // Prepare datasets
+        const datasets = [{
+            label: 'Close Price',
+            data: chartData.closes.map((price, idx) => ({
+                x: new Date(chartData.timestamps[idx]),
+                y: price
+            })),
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            pointRadius: 0,
+            pointHoverRadius: 3
+        }];
+        
+        // Add entry points
+        const entryData = [];
+        trades.forEach(trade => {
+            const entryTime = new Date(trade.entry_time);
+            let entryIdx = -1;
+            let minDiff = Infinity;
+            for (let i = 0; i < chartData.timestamps.length; i++) {
+                const chartTime = new Date(chartData.timestamps[i]);
+                const diff = Math.abs(chartTime - entryTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    entryIdx = i;
+                }
+            }
+            if (entryIdx >= 0) {
+                entryData.push({
+                    x: new Date(chartData.timestamps[entryIdx]),
+                    y: trade.entry_price,
+                    tradeInfo: `Entry: $${trade.entry_price.toFixed(4)} at ${trade.entry_time}`
+                });
+            }
+        });
+        
+        if (entryData.length > 0) {
+            datasets.push({
+                label: 'Entry Points',
+                data: entryData,
+                backgroundColor: '#10b981',
+                borderColor: '#10b981',
+                pointRadius: 12,
+                pointHoverRadius: 14,
+                pointStyle: 'circle',
+                showLine: false,
+                borderWidth: 3
+            });
+        }
+        
+        // Add exit points
+        const exitData = [];
+        trades.forEach(trade => {
+            const exitTime = new Date(trade.exit_time);
+            let exitIdx = -1;
+            let minDiff = Infinity;
+            for (let i = 0; i < chartData.timestamps.length; i++) {
+                const chartTime = new Date(chartData.timestamps[i]);
+                const diff = Math.abs(chartTime - exitTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    exitIdx = i;
+                }
+            }
+            if (exitIdx >= 0) {
+                exitData.push({
+                    x: new Date(chartData.timestamps[exitIdx]),
+                    y: trade.exit_price,
+                    status: trade.status,
+                    tradeInfo: `Exit: $${trade.exit_price.toFixed(4)} at ${trade.exit_time} (${trade.status}, ${trade.pnl_pct > 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%)`
+                });
+            }
+        });
+        
+        if (exitData.length > 0) {
+            // Separate win and loss exits
+            const winExits = exitData.filter(d => d.status === 'WIN');
+            const lossExits = exitData.filter(d => d.status === 'LOSS');
+            
+            if (winExits.length > 0) {
+                datasets.push({
+                    label: 'Exit (Win)',
+                    data: winExits,
+                    backgroundColor: '#10b981',
+                    borderColor: '#10b981',
+                    pointRadius: 12,
+                    pointHoverRadius: 14,
+                    pointStyle: 'rect',
+                    showLine: false,
+                    borderWidth: 3
+                });
+            }
+            
+            if (lossExits.length > 0) {
+                datasets.push({
+                    label: 'Exit (Loss)',
+                    data: lossExits,
+                    backgroundColor: '#ef4444',
+                    borderColor: '#ef4444',
+                    pointRadius: 12,
+                    pointHoverRadius: 14,
+                    pointStyle: 'rect',
+                    showLine: false,
+                    borderWidth: 3
+                });
+            }
+        }
+        
+        priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            title: function(context) {
+                                const date = new Date(context[0].parsed.x);
+                                return date.toLocaleString();
+                            },
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += '$' + context.parsed.y.toFixed(4);
+                                }
+                                // Add trade info if available
+                                const rawData = context.raw;
+                                if (rawData && rawData.tradeInfo) {
+                                    // Split into multiple lines for better readability
+                                    const lines = rawData.tradeInfo.split(' at ');
+                                    if (lines.length > 1) {
+                                        label += '\\n' + lines[0];
+                                        label += '\\nTime: ' + lines[1];
+                                    } else {
+                                        label += '\\n' + rawData.tradeInfo;
+                                    }
+                                }
+                                return label;
+                            },
+                            afterLabel: function(context) {
+                                const rawData = context.raw;
+                                if (rawData && rawData.status) {
+                                    return 'Status: ' + rawData.status;
+                                }
+                                return '';
+                            }
+                        }
+                    },
+                    zoom: {
+                        zoom: {
+                            wheel: {
+                                enabled: true,
+                                speed: 0.1
+                            },
+                            pinch: {
+                                enabled: true
+                            },
+                            mode: 'x',
+                            limits: {
+                                x: {
+                                    min: 'original',
+                                    max: 'original'
+                                }
+                            }
+                        },
+                        pan: {
+                            enabled: true,
+                            mode: 'x',
+                            limits: {
+                                x: {
+                                    min: 'original',
+                                    max: 'original'
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'minute',
+                            displayFormats: {
+                                minute: 'HH:mm',
+                                hour: 'HH:mm'
+                            },
+                            tooltipFormat: 'yyyy-MM-dd HH:mm:ss'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    },
+                    y: {
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Price ($)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Initialize time inputs after chart is created
+        initializeTimeInputs();
+        
+        // Attach event listeners to buttons (wait for DOM to be ready)
+        setTimeout(() => {
+            const setRangeBtn = document.getElementById('setRangeBtn');
+            const resetZoomBtn = document.getElementById('resetZoomBtn');
+            const zoomToTradesBtn = document.getElementById('zoomToTradesBtn');
+            
+            if (setRangeBtn) {
+                setRangeBtn.addEventListener('click', setTimeRange);
+            }
+            if (resetZoomBtn) {
+                resetZoomBtn.addEventListener('click', resetZoom);
+            }
+            if (zoomToTradesBtn) {
+                zoomToTradesBtn.addEventListener('click', zoomToTrades);
+            }
+        }, 100);
+    </script>
+    {% endif %}
+</body>
+</html>

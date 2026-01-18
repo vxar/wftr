@@ -1,9 +1,0 @@
-time,price,volume,volume_ratio,status,pattern,confidence,rejection_reasons_str
-2026-01-12 09:53:00-05:00,16.87,11341,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:54:00-05:00,16.97,4905,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:55:00-05:00,17.08,11795,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:56:00-05:00,16.7,10395,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:57:00-05:00,16.97,8638,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:58:00-05:00,16.27,6733,0,NO PATTERN,N/A,0,No pattern detected
-2026-01-12 09:59:00-05:00,15.7,38659,0,REJECTED,N/A,0,Confidence 65.0% < 72% required
-2026-01-12 10:00:00-05:00,16.06,11582,0,REJECTED,N/A,0,Confidence 65.0% < 72% required

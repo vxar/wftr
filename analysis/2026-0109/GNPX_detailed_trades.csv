@@ -1,3 +1,0 @@
-Ticker,Entry_Time,Entry_Price,Exit_Time,Exit_Price,Pattern,Score,Confidence,Exit_Reason,Hold_Time_Min,PnL_Pct,PnL_Dollar
-GNPX,2026-01-09 12:53:00,2.14,2026-01-09 13:14:00,2.145,Slow_Accumulation,7,80.0%,Strong Reversal (3 signals),21.0,0.23%,$0.00
-GNPX,2026-01-09 14:00:00,2.225,2026-01-09 14:35:00,2.4086999999999996,Slow_Accumulation,7,80.0%,Trailing Stop (7%),35.0,8.26%,$0.18

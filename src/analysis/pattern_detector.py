@@ -99,6 +99,58 @@ class PatternDetector:
         df['momentum'] = df['close'] - df['close'].shift(10)
         df['momentum_pct'] = df['momentum'] / df['close'].shift(10)
         
+        # Advanced momentum indicators (for pattern detection)
+        df['momentum_5'] = df['close'].pct_change(5) * 100
+        df['momentum_10'] = df['close'].pct_change(10) * 100
+        df['momentum_20'] = df['close'].pct_change(20) * 100
+        df['momentum_30'] = df['close'].pct_change(30) * 100
+        
+        # Volume indicators
+        df['volume_ma_10'] = df['volume'].rolling(10).mean()
+        df['volume_ma_20'] = df['volume'].rolling(20).mean()
+        df['volume_trend_5'] = df['volume'] / df['volume'].rolling(5).mean()
+        df['volume_trend_10'] = df['volume'] / df['volume_ma_10']
+        df['volume_increasing'] = df['volume'] > df['volume'].shift(1)
+        
+        # Price position in range
+        df['high_10'] = df['high'].rolling(10).max()
+        df['low_10'] = df['low'].rolling(10).min()
+        df['high_20'] = df['high'].rolling(20).max()
+        df['low_20'] = df['low'].rolling(20).min()
+        df['price_position_10'] = (df['close'] - df['low_10']) / (df['high_10'] - df['low_10'] + 0.0001) * 100
+        df['price_position_20'] = (df['close'] - df['low_20']) / (df['high_20'] - df['low_20'] + 0.0001) * 100
+        
+        # Moving average relationships
+        df['sma5_above_sma10'] = df['sma_5'] > df['sma_10']
+        df['sma10_above_sma20'] = df['sma_10'] > df['sma_20']
+        df['ma_bullish_order'] = df['sma5_above_sma10'] & df['sma10_above_sma20']
+        df['price_above_all_ma'] = (df['close'] > df['sma_5']) & (df['close'] > df['sma_10']) & (df['close'] > df['sma_20'])
+        
+        # MACD indicators
+        df['macd_bullish'] = df['macd'] > df['macd_signal']
+        df['macd_hist_positive'] = df['macd_hist'] > 0
+        df['macd_hist_increasing'] = df['macd_hist'] > df['macd_hist'].shift(1)
+        df['macd_hist_accelerating'] = (df['macd_hist'] > df['macd_hist'].shift(1)) & (df['macd_hist'].shift(1) > df['macd_hist'].shift(2))
+        
+        # Higher highs/lower lows
+        df['higher_high_10'] = df['high'] > df['high'].shift(1)
+        df['higher_high_20'] = df['high'] > df['high'].rolling(10).max().shift(10)
+        df['higher_low_10'] = df['low'] > df['low'].shift(1)
+        
+        # Breakout indicators
+        df['breakout_10'] = df['close'] > df['high_10'].shift(1) * 1.02  # 2% above 10-period high
+        df['breakout_20'] = df['close'] > df['high_20'].shift(1) * 1.02  # 2% above 20-period high
+        
+        # Consolidation detection
+        df['range_10'] = (df['high_10'] - df['low_10']) / df['low_10'] * 100
+        df['in_consolidation'] = df['range_10'] < 3.0  # Less than 3% range
+        
+        # RSI zones
+        df['rsi_oversold'] = df['rsi'] < 30
+        df['rsi_neutral'] = (df['rsi'] >= 30) & (df['rsi'] <= 70)
+        df['rsi_accumulation'] = (df['rsi'] >= 50) & (df['rsi'] <= 65)
+        df['rsi_overbought'] = df['rsi'] > 70
+        
         return df
     
     def _calculate_atr(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
@@ -402,218 +454,158 @@ class PatternDetector:
     
     def _detect_bullish_patterns(self, df: pd.DataFrame, idx: int, current: pd.Series, 
                                  ticker: str, date: str) -> List[PatternSignal]:
-        """Detect bullish patterns"""
+        """Detect bullish patterns based on user rules"""
         signals = []
-        lookback = df.iloc[:self.lookback_periods]
+        
+        # Need at least 30 bars of data for pattern detection
+        if idx < 30:
+            return signals
+        
         current_price = current['close']
         
-        # Pattern 1: RSI Oversold Bounce
-        if current['rsi'] < 30 and current['rsi'] > lookback['rsi'].iloc[-5:].min():
-            confidence = (30 - current['rsi']) / 30
-            target = current_price * 1.05  # 5% target
-            stop = current_price * 0.97  # 3% stop
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='RSI_Oversold_Bounce', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'rsi': current['rsi'], 'price': current_price}
-            ))
-        
-        # Pattern 2: Golden Cross (EMA crossover)
-        if (current['ema_12'] > current['ema_26'] and 
-            lookback['ema_12'].iloc[-2] <= lookback['ema_26'].iloc[-2]):
-            confidence = 0.7
-            target = current_price * 1.08
-            stop = current_price * 0.95
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='Golden_Cross', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'ema_12': current['ema_12'], 'ema_26': current['ema_26']}
-            ))
-        
-        # Pattern 3: MACD Bullish Crossover
-        if (current['macd'] > current['macd_signal'] and 
-            lookback['macd'].iloc[-2] <= lookback['macd_signal'].iloc[-2] and
-            current['macd_hist'] > 0):
-            confidence = 0.75
-            target = current_price * 1.10
-            stop = current_price * 0.94
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='MACD_Bullish_Cross', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'macd': current['macd'], 'macd_signal': current['macd_signal']}
-            ))
-        
-        # Pattern 4: Bollinger Band Bounce (from lower band)
-        if (current['bb_position'] < 0.2 and 
-            current['close'] > lookback['close'].iloc[-3:].min() and
-            current['volume_ratio'] > 1.2):
-            confidence = 0.65
-            target = current_price * 1.12
-            stop = current_price * 0.96
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='BB_Lower_Bounce', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'bb_position': current['bb_position'], 
-                           'volume_ratio': current['volume_ratio']}
-            ))
-        
-        # Pattern 5: Volume Surge with Price Breakout
-        if (current['volume_ratio'] > 2.0 and
-            current['close'] > lookback['recent_high'].iloc[-1] * 0.98 and
-            current['price_change'] > 0.02):
-            confidence = 0.8
-            target = current_price * 1.15
-            stop = current_price * 0.93
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='Volume_Breakout', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'volume_ratio': current['volume_ratio'],
-                           'price_change': current['price_change']}
-            ))
-        
-        # Pattern 6: Double Bottom (simplified)
-        if len(lookback) >= 20:
-            lows = lookback['low'].iloc[-20:]
-            min_low = lows.min()
-            min_idx = lows.idxmin()
-            recent_low = lookback['low'].iloc[-5:].min()
-            
-            if (abs(min_low - recent_low) / min_low < 0.02 and  # Similar lows
-                min_idx < len(lookback) - 10 and  # First low earlier
-                current['close'] > min_low * 1.03):  # Price recovering
-                confidence = 0.7
-                target = current_price * 1.20
-                stop = min_low * 0.98
-                signals.append(PatternSignal(
-                    ticker=ticker, date=date, pattern_type='bullish',
-                    pattern_name='Double_Bottom', confidence=confidence,
-                    entry_price=current_price, target_price=target, stop_loss=stop,
-                    timestamp=current['timestamp'],
-                    indicators={'first_low': min_low, 'second_low': recent_low}
-                ))
-        
-        # Pattern 7: Momentum Reversal
-        if (current['momentum_pct'] < -0.05 and  # Was declining
-            current['price_change'] > 0.03 and  # Now rising
-            current['volume_ratio'] > 1.5):
-            confidence = 0.72
-            target = current_price * 1.18
-            stop = current_price * 0.95
-            signals.append(PatternSignal(
-                ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='Momentum_Reversal', confidence=confidence,
-                entry_price=current_price, target_price=target, stop_loss=stop,
-                timestamp=current['timestamp'],
-                indicators={'momentum_pct': current['momentum_pct'],
-                           'price_change': current['price_change']}
-            ))
-        
-        # Pattern 8: Strong Bullish Setup (multiple indicators align)
-        bullish_count = 0
-        if current['rsi'] < 50 and current['rsi'] > 30: bullish_count += 1
-        if current['macd'] > current['macd_signal']: bullish_count += 1
-        if current['close'] > current['sma_20']: bullish_count += 1
-        if current['volume_ratio'] > 1.3: bullish_count += 1
-        if current['price_change'] > 0: bullish_count += 1
-        
-        if bullish_count >= 4:
+        # Pattern 1: Volume_Breakout_Momentum (Score: 8, Confidence: 0.85)
+        # Criteria: volume_ratio >= 1.8, momentum_10 >= 2.0%, breakout_10 == True, price_above_all_ma == True
+        if (current.get('volume_ratio', 0) >= 1.8 and
+            current.get('momentum_10', 0) >= 2.0 and
+            current.get('breakout_10', False) and
+            current.get('price_above_all_ma', False)):
             confidence = 0.85
-            target = current_price * 1.25
-            stop = current_price * 0.92
+            target = current_price * 1.20  # 20% target
+            stop = current_price * 0.85   # 15% stop
             signals.append(PatternSignal(
                 ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='Strong_Bullish_Setup', confidence=confidence,
+                pattern_name='Volume_Breakout_Momentum', confidence=confidence,
                 entry_price=current_price, target_price=target, stop_loss=stop,
                 timestamp=current['timestamp'],
-                indicators={'bullish_indicators': bullish_count, 'rsi': current['rsi']}
+                indicators={
+                    'volume_ratio': current.get('volume_ratio', 0),
+                    'momentum_10': current.get('momentum_10', 0),
+                    'breakout_10': current.get('breakout_10', False)
+                }
             ))
         
-        # Pattern 9: Accumulation Pattern (price consolidating with increasing volume)
-        if len(lookback) >= 15:
-            recent_volatility = lookback['close'].iloc[-10:].std() / lookback['close'].iloc[-10:].mean()
-            avg_volume = lookback['volume'].iloc[-10:].mean()
-            recent_volume = lookback['volume'].iloc[-5:].mean()
-            
-            if (recent_volatility < 0.02 and  # Low volatility (consolidation)
-                recent_volume > avg_volume * 1.2 and  # Increasing volume
-                current['close'] > lookback['close'].iloc[-15] * 0.98):  # Not breaking down
-                confidence = 0.75
-                target = current_price * 1.30
-                stop = current_price * 0.93
+        # Pattern 2: RSI_Accumulation_Entry (Score: 7, Confidence: 0.75)
+        # Criteria: rsi_accumulation == True, momentum_10 >= 2.0%, volume_ratio >= 1.8,
+        #          macd_hist_increasing == True, higher_high_20 == True
+        if (current.get('rsi_accumulation', False) and
+            current.get('momentum_10', 0) >= 2.0 and
+            current.get('volume_ratio', 0) >= 1.8 and
+            current.get('macd_hist_increasing', False) and
+            current.get('higher_high_20', False)):
+            confidence = 0.75
+            target = current_price * 1.20  # 20% target
+            stop = current_price * 0.85    # 15% stop
+            signals.append(PatternSignal(
+                ticker=ticker, date=date, pattern_type='bullish',
+                pattern_name='RSI_Accumulation_Entry', confidence=confidence,
+                entry_price=current_price, target_price=target, stop_loss=stop,
+                timestamp=current['timestamp'],
+                indicators={
+                    'rsi': current.get('rsi', 0),
+                    'momentum_10': current.get('momentum_10', 0),
+                    'volume_ratio': current.get('volume_ratio', 0)
+                }
+            ))
+        
+        # Pattern 3: Golden_Cross_Volume (Score: 7, Confidence: 0.78)
+        # Criteria: sma5_above_sma10 == True, sma10_above_sma20 == True,
+        #          JUST crossed (sma10_above_sma20 was False, now True),
+        #          volume_ratio >= 1.5, momentum_10 >= 1.5%
+        if idx > 0 and len(df) > idx:
+            prev = df.iloc[idx - 1]
+            prev_sma10_above_sma20 = prev.get('sma10_above_sma20', False) if 'sma10_above_sma20' in prev else False
+            if (current.get('sma5_above_sma10', False) and
+                current.get('sma10_above_sma20', False) and
+                not prev_sma10_above_sma20 and  # Just crossed
+                current.get('volume_ratio', 0) >= 1.5 and
+                current.get('momentum_10', 0) >= 1.5):
+                confidence = 0.78
+                target = current_price * 1.20  # 20% target
+                stop = current_price * 0.85   # 15% stop
                 signals.append(PatternSignal(
                     ticker=ticker, date=date, pattern_type='bullish',
-                    pattern_name='Accumulation_Pattern', confidence=confidence,
+                    pattern_name='Golden_Cross_Volume', confidence=confidence,
                     entry_price=current_price, target_price=target, stop_loss=stop,
                     timestamp=current['timestamp'],
-                    indicators={'volatility': recent_volatility, 'volume_ratio': recent_volume / avg_volume}
+                    indicators={
+                        'sma5_above_sma10': current.get('sma5_above_sma10', False),
+                        'sma10_above_sma20': current.get('sma10_above_sma20', False),
+                        'volume_ratio': current.get('volume_ratio', 0)
+                    }
                 ))
         
-        # Pattern 10: VWAP Bounce (price bouncing off VWAP with volume)
-        if current['vwap'] > 0:  # Avoid division by zero
-            vwap_distance = (current['close'] - current['vwap']) / current['vwap']
-        else:
-            vwap_distance = 999  # Skip this pattern if VWAP is zero
-        if (current['vwap'] > 0 and vwap_distance < 0.02 and vwap_distance > -0.02 and  # Near VWAP
-            current['volume_ratio'] > 1.5 and
-            current['close'] > lookback['close'].iloc[-3:].min()):
-            confidence = 0.68
-            target = current_price * 1.22
-            stop = current_price * 0.96
+        # Pattern 4: Slow_Accumulation (Score: 7, Confidence: 0.80)
+        # Criteria: 1.8 <= volume_ratio < 3.5, momentum_10 >= 2.0%, momentum_20 >= 3.0%,
+        #          volume_trend_10 >= 1.3, macd_hist_accelerating == True, price_position_20 >= 70
+        volume_ratio = current.get('volume_ratio', 0)
+        if (1.8 <= volume_ratio < 3.5 and
+            current.get('momentum_10', 0) >= 2.0 and
+            current.get('momentum_20', 0) >= 3.0 and
+            current.get('volume_trend_10', 0) >= 1.3 and
+            current.get('macd_hist_accelerating', False) and
+            current.get('price_position_20', 0) >= 70):
+            confidence = 0.80
+            target = current_price * 1.20  # 20% target
+            stop = current_price * 0.85   # 15% stop
             signals.append(PatternSignal(
                 ticker=ticker, date=date, pattern_type='bullish',
-                pattern_name='VWAP_Bounce', confidence=confidence,
+                pattern_name='Slow_Accumulation', confidence=confidence,
                 entry_price=current_price, target_price=target, stop_loss=stop,
                 timestamp=current['timestamp'],
-                indicators={'vwap_distance': vwap_distance, 'volume_ratio': current['volume_ratio']}
+                indicators={
+                    'volume_ratio': volume_ratio,
+                    'momentum_10': current.get('momentum_10', 0),
+                    'momentum_20': current.get('momentum_20', 0)
+                }
             ))
         
-        # Pattern 11: Breakout from Consolidation
-        if len(lookback) >= 20:
-            consolidation_high = lookback['high'].iloc[-15:].max()
-            consolidation_low = lookback['low'].iloc[-15:].min()
-            consolidation_range = (consolidation_high - consolidation_low) / consolidation_low
-            
-            if (consolidation_range < 0.05 and  # Tight consolidation
-                current['close'] > consolidation_high * 1.01 and  # Breaking above
-                current['volume_ratio'] > 2.0):  # High volume
-                confidence = 0.82
-                target = current_price * 1.35
-                stop = consolidation_high * 0.98
+        # Pattern 5: MACD_Acceleration_Breakout (Score: 8, Confidence: 0.82)
+        # Criteria: macd_hist_accelerating == True, macd_bullish == True,
+        #          breakout_20 == True, volume_ratio >= 2.0, momentum_20 >= 3.0%
+        if (current.get('macd_hist_accelerating', False) and
+            current.get('macd_bullish', False) and
+            current.get('breakout_20', False) and
+            current.get('volume_ratio', 0) >= 2.0 and
+            current.get('momentum_20', 0) >= 3.0):
+            confidence = 0.82
+            target = current_price * 1.20  # 20% target
+            stop = current_price * 0.85   # 15% stop
+            signals.append(PatternSignal(
+                ticker=ticker, date=date, pattern_type='bullish',
+                pattern_name='MACD_Acceleration_Breakout', confidence=confidence,
+                entry_price=current_price, target_price=target, stop_loss=stop,
+                timestamp=current['timestamp'],
+                indicators={
+                    'macd_hist_accelerating': current.get('macd_hist_accelerating', False),
+                    'macd_bullish': current.get('macd_bullish', False),
+                    'breakout_20': current.get('breakout_20', False)
+                }
+            ))
+        
+        # Pattern 6: Consolidation_Breakout (Score: 8, Confidence: 0.83)
+        # Criteria: in_consolidation == False (just broke out),
+        #          was consolidating in last 5 bars (3+ periods),
+        #          breakout_10 == True, volume_ratio >= 2.0, price_above_all_ma == True
+        if idx >= 5:
+            was_consolidating = df.iloc[idx-5:idx]['in_consolidation'].sum() >= 3
+            if (not current.get('in_consolidation', False) and  # Just broke out
+                was_consolidating and  # Was consolidating
+                current.get('breakout_10', False) and
+                current.get('volume_ratio', 0) >= 2.0 and
+                current.get('price_above_all_ma', False)):
+                confidence = 0.83
+                target = current_price * 1.20  # 20% target
+                stop = current_price * 0.85   # 15% stop
                 signals.append(PatternSignal(
                     ticker=ticker, date=date, pattern_type='bullish',
                     pattern_name='Consolidation_Breakout', confidence=confidence,
                     entry_price=current_price, target_price=target, stop_loss=stop,
                     timestamp=current['timestamp'],
-                    indicators={'consolidation_range': consolidation_range,
-                               'volume_ratio': current['volume_ratio']}
-                ))
-        
-        # Pattern 12: Oversold Recovery (RSI recovering from oversold)
-        if len(lookback) >= 10:
-            min_rsi = lookback['rsi'].iloc[-10:].min()
-            if (min_rsi < 25 and  # Was very oversold
-                current['rsi'] > min_rsi + 5 and  # Recovering
-                current['rsi'] < 45 and  # Not overbought yet
-                current['close'] > lookback['close'].iloc[-5:].min() * 1.02):  # Price recovering
-                confidence = 0.78
-                target = current_price * 1.28
-                stop = lookback['close'].iloc[-10:].min() * 0.97
-                signals.append(PatternSignal(
-                    ticker=ticker, date=date, pattern_type='bullish',
-                    pattern_name='Oversold_Recovery', confidence=confidence,
-                    entry_price=current_price, target_price=target, stop_loss=stop,
-                    timestamp=current['timestamp'],
-                    indicators={'min_rsi': min_rsi, 'current_rsi': current['rsi']}
+                    indicators={
+                        'was_consolidating': was_consolidating,
+                        'breakout_10': current.get('breakout_10', False),
+                        'volume_ratio': current.get('volume_ratio', 0)
+                    }
                 ))
         
         return signals

@@ -10,10 +10,10 @@ from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 import time
 import logging
-from core.realtime_trader import RealtimeTrader, TradeSignal, ActivePosition
-from data.api_interface import DataAPI
-from analysis.premarket_analyzer import PreMarketAnalyzer
-from database.trading_database import TradingDatabase, TradeRecord, PositionRecord
+from .realtime_trader import RealtimeTrader, TradeSignal, ActivePosition
+from ..data.api_interface import DataAPI
+from ..analysis.premarket_analyzer import PreMarketAnalyzer
+from ..database.trading_database import TradingDatabase, TradeRecord, PositionRecord
 import pytz
 
 # Configure logging
@@ -91,12 +91,14 @@ class LiveTradingBot:
         self.initial_capital = initial_capital
         self.current_capital = initial_capital
         self.target_capital = target_capital
+        # FIX: Pass rejection callback to save rejections to database
         self.trader = RealtimeTrader(
             min_confidence=min_confidence,
             min_entry_price_increase=min_entry_price_increase,
             trailing_stop_pct=trailing_stop_pct,
             profit_target_pct=profit_target_pct,
-            data_api=data_api  # Pass data_api for multi-timeframe analysis
+            data_api=data_api,  # Pass data_api for multi-timeframe analysis
+            rejection_callback=self._add_rejected_entry  # Pass callback to save rejections
         )
         self.premarket_analyzer = PreMarketAnalyzer(
             min_confidence=min_confidence,
@@ -128,6 +130,11 @@ class LiveTradingBot:
         self.top_gainers: List[str] = []  # Track top gainers
         self.top_gainers_data: List[Dict] = []  # Store full gainer data with change % for sorting
         self.rejected_entries: List[Dict] = []  # Track rejected entry signals for display (keep last 50)
+        
+        # Data caching: Store historical data per ticker to avoid refetching
+        self.data_cache: Dict[str, pd.DataFrame] = {}  # Cached dataframes per ticker
+        self.cache_last_refresh: Dict[str, datetime] = {}  # Track when cache was last refreshed
+        self.cache_full_refresh_interval_minutes = 30  # Refresh full dataset every 30 minutes to handle gaps
         
         # Re-entry tracking: track when tickers were exited to allow re-entry after cooldown
         self.ticker_exit_times: Dict[str, datetime] = {}  # Track exit time per ticker
@@ -287,9 +294,147 @@ class LiveTradingBot:
         """Remove a ticker from monitoring"""
         if ticker in self.tickers:
             self.tickers.remove(ticker)
-            logger.info(f"Removed {ticker} from monitoring list")
+            # Clear cache for removed ticker
+            if ticker in self.data_cache:
+                del self.data_cache[ticker]
+            if ticker in self.cache_last_refresh:
+                del self.cache_last_refresh[ticker]
+            logger.info(f"Removed {ticker} from monitoring list (cache cleared)")
     
-    def update_tickers_from_gainers(self, max_tickers: int = 20):
+    def _get_cached_or_fetch_data(self, ticker: str, is_new_ticker: bool, current_time: datetime) -> Optional[pd.DataFrame]:
+        """
+        Get cached data or fetch new data with incremental updates
+        
+        Strategy:
+        - New tickers: Fetch 1200 minutes (max available) and cache
+        - Existing tickers: 
+          * If cache exists and recent (< 30 min old): Fetch only new data (1-5 minutes) and append
+          * If cache is old (> 30 min): Refresh full dataset (1200 minutes) to handle gaps
+        """
+        try:
+            # For new tickers: Always fetch full dataset and cache it
+            if is_new_ticker:
+                logger.info(f"[{ticker}] NEW TICKER: Fetching full historical data (1200 minutes) and caching")
+                df = self.data_api.get_1min_data(ticker, minutes=1200)
+                if df is not None and len(df) > 0:
+                    # Ensure timestamp is datetime and sort
+                    if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+                        df['timestamp'] = pd.to_datetime(df['timestamp'])
+                    df = df.sort_values('timestamp').reset_index(drop=True)
+                    # Remove duplicates
+                    df = df.drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)
+                    # Cache the data
+                    self.data_cache[ticker] = df.copy()
+                    self.cache_last_refresh[ticker] = current_time
+                    logger.debug(f"[{ticker}] Cached {len(df)} minutes of data")
+                return df
+            
+            # For existing tickers: Use cache with incremental updates
+            if ticker in self.data_cache:
+                cached_df = self.data_cache[ticker]
+                last_refresh = self.cache_last_refresh.get(ticker)
+                
+                # Check if cache needs full refresh (older than refresh interval)
+                needs_full_refresh = False
+                if last_refresh:
+                    minutes_since_refresh = (current_time - last_refresh).total_seconds() / 60
+                    if minutes_since_refresh >= self.cache_full_refresh_interval_minutes:
+                        needs_full_refresh = True
+                        logger.debug(f"[{ticker}] Cache is {minutes_since_refresh:.1f} minutes old, refreshing full dataset")
+                
+                if needs_full_refresh:
+                    # Refresh full dataset to handle any gaps
+                    logger.debug(f"[{ticker}] Refreshing full dataset (1200 minutes)")
+                    df_new = self.data_api.get_1min_data(ticker, minutes=1200)
+                    if df_new is not None and len(df_new) > 0:
+                        # Ensure timestamp is datetime and sort
+                        if not pd.api.types.is_datetime64_any_dtype(df_new['timestamp']):
+                            df_new['timestamp'] = pd.to_datetime(df_new['timestamp'])
+                        df_new = df_new.sort_values('timestamp').reset_index(drop=True)
+                        # Remove duplicates
+                        df_new = df_new.drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)
+                        # Update cache
+                        self.data_cache[ticker] = df_new.copy()
+                        self.cache_last_refresh[ticker] = current_time
+                        logger.debug(f"[{ticker}] Updated cache with {len(df_new)} minutes of data")
+                        return df_new
+                    else:
+                        # If refresh failed, use cached data
+                        logger.warning(f"[{ticker}] Full refresh failed, using cached data")
+                        return cached_df
+                else:
+                    # Incremental update: Fetch only new data (last 5 minutes to handle gaps)
+                    logger.debug(f"[{ticker}] Fetching incremental data (5 minutes) to append to cache")
+                    df_incremental = self.data_api.get_1min_data(ticker, minutes=5)
+                    
+                    if df_incremental is not None and len(df_incremental) > 0:
+                        # Ensure timestamp is datetime and sort
+                        if not pd.api.types.is_datetime64_any_dtype(df_incremental['timestamp']):
+                            df_incremental['timestamp'] = pd.to_datetime(df_incremental['timestamp'])
+                        df_incremental = df_incremental.sort_values('timestamp').reset_index(drop=True)
+                        
+                        # Get the latest timestamp from cache
+                        if len(cached_df) > 0:
+                            if not pd.api.types.is_datetime64_any_dtype(cached_df['timestamp']):
+                                cached_df['timestamp'] = pd.to_datetime(cached_df['timestamp'])
+                            latest_cached_time = cached_df['timestamp'].max()
+                            
+                            # Filter incremental data to only new records
+                            df_new_records = df_incremental[df_incremental['timestamp'] > latest_cached_time].copy()
+                            
+                            if len(df_new_records) > 0:
+                                # Append new records to cache
+                                df_updated = pd.concat([cached_df, df_new_records], ignore_index=True)
+                                df_updated = df_updated.sort_values('timestamp').reset_index(drop=True)
+                                # Remove duplicates (keep last if any)
+                                df_updated = df_updated.drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)
+                                
+                                # Update cache
+                                self.data_cache[ticker] = df_updated.copy()
+                                self.cache_last_refresh[ticker] = current_time
+                                logger.debug(f"[{ticker}] Appended {len(df_new_records)} new minutes to cache (total: {len(df_updated)})")
+                                return df_updated
+                            else:
+                                # No new data, return cached data
+                                logger.debug(f"[{ticker}] No new data, using cached data ({len(cached_df)} minutes)")
+                                return cached_df
+                        else:
+                            # Empty cache, use incremental data
+                            logger.warning(f"[{ticker}] Cache is empty, using incremental data")
+                            self.data_cache[ticker] = df_incremental.copy()
+                            self.cache_last_refresh[ticker] = current_time
+                            return df_incremental
+                    else:
+                        # Incremental fetch failed, use cached data
+                        logger.warning(f"[{ticker}] Incremental fetch failed, using cached data")
+                        return cached_df
+            else:
+                # No cache exists (shouldn't happen for existing tickers, but handle it)
+                logger.warning(f"[{ticker}] No cache found for existing ticker, fetching full dataset")
+                df = self.data_api.get_1min_data(ticker, minutes=1200)
+                if df is not None and len(df) > 0:
+                    # Ensure timestamp is datetime and sort
+                    if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+                        df['timestamp'] = pd.to_datetime(df['timestamp'])
+                    df = df.sort_values('timestamp').reset_index(drop=True)
+                    # Remove duplicates
+                    df = df.drop_duplicates(subset=['timestamp'], keep='last').sort_values('timestamp').reset_index(drop=True)
+                    # Cache the data
+                    self.data_cache[ticker] = df.copy()
+                    self.cache_last_refresh[ticker] = current_time
+                return df
+                
+        except Exception as e:
+            logger.error(f"[{ticker}] Error in _get_cached_or_fetch_data: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # Return cached data if available, otherwise None
+            if ticker in self.data_cache:
+                logger.warning(f"[{ticker}] Returning cached data due to error")
+                return self.data_cache[ticker]
+            return None
+    
+    def update_tickers_from_gainers(self, max_tickers: int = 30):
         """
         Update ticker list from top gainers (if using WebullDataAPI)
         
@@ -313,8 +458,24 @@ class LiveTradingBot:
                 self.top_gainers_data = gainer_data_sorted[:max_tickers]
                 
                 # Add new tickers that aren't already being monitored
-                added = 0
+                # First, validate tickers by checking if we can get their ticker ID
+                valid_tickers = []
                 for ticker in new_tickers:
+                    if not ticker or not ticker.strip():
+                        continue
+                    # Try to validate ticker by checking if we can get ticker ID
+                    try:
+                        ticker_id = self.data_api._get_ticker_id(ticker)
+                        if ticker_id:
+                            valid_tickers.append(ticker)
+                        else:
+                            logger.warning(f"Skipping invalid ticker {ticker} (ticker ID not found)")
+                    except Exception as e:
+                        logger.warning(f"Skipping invalid ticker {ticker}: {e}")
+                
+                # Add only valid tickers
+                added = 0
+                for ticker in valid_tickers:
                     if ticker not in self.tickers:
                         self.add_ticker(ticker)
                         added += 1
@@ -541,7 +702,10 @@ class LiveTradingBot:
         
         try:
             # Initialize monitoring status for this ticker
-            if ticker not in self.monitoring_status:
+            # CRITICAL FIX: Check if this is a newly discovered ticker BEFORE initializing
+            is_new_ticker = ticker not in self.monitoring_status
+            
+            if is_new_ticker:
                 self.monitoring_status[ticker] = {
                     'status': 'monitoring',
                     'last_check': None,
@@ -552,21 +716,41 @@ class LiveTradingBot:
                     'fast_mover_vol_ratio': 0.0,
                     'fast_mover_momentum': 0.0
                 }
+                logger.info(f"[NEW TICKER] {ticker} added to monitoring - will fetch full historical data")
             
             # Update last check time
             self.monitoring_status[ticker]['last_check'] = self._get_current_et_time()
             self.monitoring_status[ticker]['has_position'] = ticker in self.trader.active_positions
             
-            # Fetch latest data (800 minutes = ~13 hours of 1-min data)
-            df = self.data_api.get_1min_data(ticker, minutes=800)
-            logger.debug(f"[{ticker}] Fetched {len(df)} minutes of data")
+            # DATA CACHING: Fetch and cache historical data efficiently
+            current_time = self._get_current_et_time()
+            df = self._get_cached_or_fetch_data(ticker, is_new_ticker, current_time)
             
-            if len(df) < 50:
-                reason = f"Insufficient data: only {len(df)} minutes"
+            if df is None or len(df) == 0:
+                reason = f"Failed to fetch data for {ticker}"
+                logger.warning(f"{reason}")
+                self.monitoring_status[ticker]['rejection_reasons'] = [reason]
+                self.monitoring_status[ticker]['status'] = 'rejected'
+                return None, []
+            
+            # Minimum data requirements
+            # CRITICAL FIX: Allow analysis immediately when ticker is identified
+            # analyze_data can work with as few as 4 bars (surge detection) or 30+ bars (pattern detection)
+            # Don't reject tickers with limited data - let analyze_data decide if it can work with the data
+            min_required_for_surge = 4  # Surge detection minimum
+            min_required_for_patterns = 30  # Pattern detection minimum
+            
+            if len(df) < min_required_for_surge:
+                reason = f"Insufficient data: only {len(df)} minutes (need {min_required_for_surge} for surge detection)"
                 logger.warning(f"{reason} for {ticker}")
                 self.monitoring_status[ticker]['rejection_reasons'] = [reason]
                 self.monitoring_status[ticker]['status'] = 'rejected'
                 return None, []
+            elif len(df) < min_required_for_patterns:
+                # Allow analysis with limited data - analyze_data will use surge detection if available
+                logger.info(f"[{ticker}] Limited data: {len(df)} minutes (pattern detection may be limited, surge detection available)")
+            
+            logger.debug(f"[{ticker}] Using {len(df)} minutes of data (cached: {ticker in self.data_cache}, {'NEW TICKER' if is_new_ticker else 'existing'})")
             
             # Get current price
             try:
@@ -660,7 +844,16 @@ class LiveTradingBot:
             return None, []
             
         except Exception as e:
-            logger.error(f"Error processing {ticker}: {e}")
+            error_msg = str(e)
+            # If ticker ID not found, remove ticker from monitoring list
+            if "Could not find ticker ID" in error_msg or "ticker ID" in error_msg.lower():
+                logger.warning(f"Removing invalid ticker {ticker} from monitoring list (ticker ID not found)")
+                if ticker in self.tickers:
+                    self.tickers.remove(ticker)
+                if ticker in self.monitoring_status:
+                    del self.monitoring_status[ticker]
+            else:
+                logger.error(f"Error processing {ticker}: {e}")
             return None, []
     
     def _validate_premarket_signal_still_valid(self, df: pd.DataFrame, premarket_signal: Dict) -> bool:
@@ -923,6 +1116,15 @@ class LiveTradingBot:
             
             # Save position to database
             try:
+                # FIX: Ensure confidence is between 0.0-1.0 (decimal format) before storing
+                confidence_value = signal.confidence if hasattr(signal, 'confidence') else 0.0
+                if confidence_value > 1.0:
+                    logger.warning(f"Confidence value {confidence_value} > 1.0 for {ticker}, converting from percentage to decimal")
+                    confidence_value = confidence_value / 100.0
+                elif confidence_value < 0.0:
+                    logger.warning(f"Confidence value {confidence_value} < 0.0 for {ticker}, setting to 0.0")
+                    confidence_value = 0.0
+                
                 position_record = PositionRecord(
                     ticker=ticker,
                     entry_time=signal.timestamp if hasattr(signal.timestamp, 'isoformat') else datetime.now(),
@@ -930,7 +1132,7 @@ class LiveTradingBot:
                     shares=shares,
                     entry_value=position_value,
                     entry_pattern=signal.pattern_name if hasattr(signal, 'pattern_name') else 'Unknown',
-                    confidence=signal.confidence if hasattr(signal, 'confidence') else 0.0,
+                    confidence=confidence_value,
                     target_price=signal.target_price if hasattr(signal, 'target_price') else None,
                     stop_loss=signal.stop_loss if hasattr(signal, 'stop_loss') else None,
                     is_active=True
@@ -981,6 +1183,19 @@ class LiveTradingBot:
             position_value = position.shares * signal.price if hasattr(position, 'shares') else 0
             pnl_dollars = position_value - position.entry_value if hasattr(position, 'entry_value') else 0
             
+            # FIX: Ensure P&L consistency - if percentage is negative, dollars should be negative
+            # This prevents data inconsistencies like LRCX trade
+            if pnl_pct < 0 and pnl_dollars > 0:
+                logger.warning(f"P&L inconsistency detected for {ticker}: pnl_pct={pnl_pct:.2f}%, pnl_dollars=${pnl_dollars:.2f}. Recalculating...")
+                # Recalculate based on percentage to ensure consistency
+                pnl_dollars = position.entry_value * (pnl_pct / 100)
+                position_value = position.entry_value + pnl_dollars
+            elif pnl_pct > 0 and pnl_dollars < 0:
+                logger.warning(f"P&L inconsistency detected for {ticker}: pnl_pct={pnl_pct:.2f}%, pnl_dollars=${pnl_dollars:.2f}. Recalculating...")
+                # Recalculate based on percentage to ensure consistency
+                pnl_dollars = position.entry_value * (pnl_pct / 100)
+                position_value = position.entry_value + pnl_dollars
+            
             # Update capital
             self.current_capital += position_value
             
@@ -1018,6 +1233,16 @@ class LiveTradingBot:
             # Save to database (only if ticker is valid)
             if trade.ticker and str(trade.ticker).strip():
                 try:
+                    # FIX: Ensure confidence is between 0.0-1.0 (decimal format)
+                    # If confidence is > 1, it was stored incorrectly as percentage, convert to decimal
+                    confidence_value = trade.confidence
+                    if confidence_value > 1.0:
+                        logger.warning(f"Confidence value {confidence_value} > 1.0 for {trade.ticker}, converting from percentage to decimal")
+                        confidence_value = confidence_value / 100.0
+                    elif confidence_value < 0.0:
+                        logger.warning(f"Confidence value {confidence_value} < 0.0 for {trade.ticker}, setting to 0.0")
+                        confidence_value = 0.0
+                    
                     trade_record = TradeRecord(
                         ticker=str(trade.ticker).strip(),
                         entry_time=trade.entry_time,
@@ -1031,7 +1256,7 @@ class LiveTradingBot:
                         pnl_dollars=trade.pnl_dollars,
                         entry_pattern=trade.entry_pattern if trade.entry_pattern else 'Unknown',
                         exit_reason=trade.exit_reason if trade.exit_reason else 'Unknown',
-                        confidence=trade.confidence
+                        confidence=confidence_value
                     )
                     self.db.add_trade(trade_record)
                 except Exception as e:
@@ -1126,6 +1351,16 @@ class LiveTradingBot:
             partial_pnl = partial_exit_value - partial_entry_value
             partial_pnl_pct = ((signal.price - position.entry_price) / position.entry_price) * 100
             
+            # FIX: Ensure P&L consistency for partial exits
+            if partial_pnl_pct < 0 and partial_pnl > 0:
+                logger.warning(f"Partial P&L inconsistency detected for {signal.ticker}: pnl_pct={partial_pnl_pct:.2f}%, pnl_dollars=${partial_pnl:.2f}. Recalculating...")
+                partial_pnl = partial_entry_value * (partial_pnl_pct / 100)
+                partial_exit_value = partial_entry_value + partial_pnl
+            elif partial_pnl_pct > 0 and partial_pnl < 0:
+                logger.warning(f"Partial P&L inconsistency detected for {signal.ticker}: pnl_pct={partial_pnl_pct:.2f}%, pnl_dollars=${partial_pnl:.2f}. Recalculating...")
+                partial_pnl = partial_entry_value * (partial_pnl_pct / 100)
+                partial_exit_value = partial_entry_value + partial_pnl
+            
             # Update capital
             self.current_capital += partial_exit_value
             
@@ -1163,7 +1398,7 @@ class LiveTradingBot:
                 return False
             
             try:
-                from database.trading_database import TradeRecord
+                from ..database.trading_database import TradeRecord
                 from datetime import datetime
                 
                 partial_trade = TradeRecord(
@@ -1181,6 +1416,13 @@ class LiveTradingBot:
                     exit_reason=f"Partial profit taking ({exit_pct}%) at +{partial_pnl_pct:.2f}%",
                     confidence=position.entry_confidence if hasattr(position, 'entry_confidence') else 0.0
                 )
+                # FIX: Ensure confidence is between 0.0-1.0 before saving
+                if partial_trade.confidence > 1.0:
+                    logger.warning(f"Partial trade confidence {partial_trade.confidence} > 1.0 for {ticker}, converting from percentage to decimal")
+                    partial_trade.confidence = partial_trade.confidence / 100.0
+                elif partial_trade.confidence < 0.0:
+                    logger.warning(f"Partial trade confidence {partial_trade.confidence} < 0.0 for {ticker}, setting to 0.0")
+                    partial_trade.confidence = 0.0
                 self.db.add_trade(partial_trade)
             except Exception as e:
                 logger.error(f"Error saving partial trade to database: {e}")
@@ -1376,9 +1618,50 @@ class LiveTradingBot:
         if should_refresh:
             try:
                 logger.info("Refreshing stock list from top gainers...")
-                self.update_tickers_from_gainers(max_tickers=20)
+                self.update_tickers_from_gainers(max_tickers=30)
                 self.last_stock_discovery = current_time
                 logger.info(f"Stock list refreshed. Now monitoring {len(self.tickers)} tickers from top gainers")
+                if self.tickers:
+                    # Print tickers with their rank in top gainers
+                    ticker_rank_list = []
+                    for idx, ticker in enumerate(self.top_gainers, 1):
+                        if ticker in self.tickers:
+                            # Try to get change percentage from gainer data first
+                            change_pct = None
+                            for gainer in self.top_gainers_data:
+                                if gainer.get('symbol') == ticker:
+                                    change_pct = gainer.get('change_ratio', 0) or gainer.get('changeRatio', 0) or 0
+                                    break
+                            
+                            # If change_pct is 0 or None, try to get from gainer price data
+                            if not change_pct or change_pct == 0:
+                                # Try to calculate from gainer data (change and price)
+                                for gainer in self.top_gainers_data:
+                                    if gainer.get('symbol') == ticker:
+                                        change = gainer.get('change', 0)
+                                        price = gainer.get('price', 0) or gainer.get('close', 0)
+                                        if price and price > 0 and change:
+                                            change_pct = (change / price) * 100
+                                            break
+                            
+                            # If still 0, skip calculation from minute data (too slow for logging)
+                            # The web interface calculates this on-demand for display
+                            
+                            # Format ticker with rank and change percentage
+                            if change_pct is not None and change_pct != 0:
+                                sign = '+' if change_pct >= 0 else ''
+                                ticker_rank_list.append(f"#{idx} {ticker} ({sign}{change_pct:.2f}%)")
+                            else:
+                                ticker_rank_list.append(f"#{idx} {ticker}")
+                    if ticker_rank_list:
+                        ticker_list = ', '.join(ticker_rank_list)
+                        logger.info(f"Monitored tickers (ranked): {ticker_list}")
+                    else:
+                        # Fallback: just list tickers if rank info not available
+                        ticker_list = ', '.join(sorted(self.tickers))
+                        logger.info(f"Monitored tickers: {ticker_list}")
+                else:
+                    logger.warning("No tickers in monitoring list")
             except Exception as e:
                 logger.warning(f"Error refreshing stock list from top gainers: {e}")
         
@@ -1411,7 +1694,16 @@ class LiveTradingBot:
                         if len(self.trader.active_positions) < self.max_positions:
                             self._execute_entry(entry_signal)
                 except Exception as e:
-                    logger.error(f"Error in premarket trading for {ticker}: {e}")
+                    error_msg = str(e)
+                    # If ticker ID not found, remove ticker from monitoring list
+                    if "Could not find ticker ID" in error_msg or "ticker ID" in error_msg.lower():
+                        logger.warning(f"Removing invalid ticker {ticker} from monitoring list (ticker ID not found)")
+                        if ticker in self.tickers:
+                            self.tickers.remove(ticker)
+                        if ticker in self.monitoring_status:
+                            del self.monitoring_status[ticker]
+                    else:
+                        logger.error(f"Error in premarket trading for {ticker}: {e}")
             
             # Print portfolio status after premarket cycle
             portfolio_value = self.get_portfolio_value()
@@ -1452,7 +1744,16 @@ class LiveTradingBot:
                         self._execute_entry(entry_signal)
                 
             except Exception as e:
-                logger.error(f"Error in trading cycle for {ticker}: {e}")
+                error_msg = str(e)
+                # If ticker ID not found, remove ticker from monitoring list
+                if "Could not find ticker ID" in error_msg or "ticker ID" in error_msg.lower():
+                    logger.warning(f"Removing invalid ticker {ticker} from monitoring list (ticker ID not found)")
+                    if ticker in self.tickers:
+                        self.tickers.remove(ticker)
+                    if ticker in self.monitoring_status:
+                        del self.monitoring_status[ticker]
+                else:
+                    logger.error(f"Error in trading cycle for {ticker}: {e}")
         
         # After trading window, only manage existing positions
         if self._is_after_trading_window():

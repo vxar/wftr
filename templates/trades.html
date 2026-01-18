@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completed Trades - Trading Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .profit-positive { color: #059669; }
+        .profit-negative { color: #dc2626; }
+        .trade-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .trade-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .trade-card.profit {
+            border-left-color: #059669;
+        }
+        .trade-card.loss {
+            border-left-color: #dc2626;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.href='/'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Dashboard
+                </button>
+                <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                    <i class="fas fa-history text-blue-600"></i>
+                    Completed Trades
+                </h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-gray-600">Total Trades:</span>
+                <span class="text-2xl font-bold text-gray-800">{{ trades|length }}</span>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-medium">Total P&L</p>
+                        <p class="text-2xl font-bold mt-1 {% if total_pnl > 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                            ${{ "%.2f"|format(total_pnl) }}
+                        </p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-lg">
+                        <i class="fas fa-chart-line text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-medium">Win Rate</p>
+                        <p class="text-2xl font-bold mt-1 text-gray-800">{{ "%.1f"|format(win_rate * 100) }}%</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-lg">
+                        <i class="fas fa-percentage text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-medium">Winning Trades</p>
+                        <p class="text-2xl font-bold mt-1 profit-positive">{{ winning_trades }}</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-lg">
+                        <i class="fas fa-trophy text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-xl p-6 border border-gray-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm font-medium">Losing Trades</p>
+                        <p class="text-2xl font-bold mt-1 profit-negative">{{ losing_trades }}</p>
+                    </div>
+                    <div class="bg-red-100 p-3 rounded-lg">
+                        <i class="fas fa-times-circle text-red-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="bg-white rounded-xl p-4 mb-6 border border-gray-200">
+            <div class="flex flex-wrap gap-4 items-center">
+                <div class="flex items-center gap-2">
+                    <label class="text-gray-700 font-medium">Filter:</label>
+                    <select id="filterSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-gray-700">
+                        <option value="all">All Trades</option>
+                        <option value="profitable">Profitable Only</option>
+                        <option value="losing">Losing Only</option>
+                        <option value="today">Today Only</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-gray-700 font-medium">Sort by:</label>
+                    <select id="sortSelect" class="border border-gray-300 rounded-lg px-3 py-2 text-gray-700">
+                        <option value="date">Date (Newest)</option>
+                        <option value="pnl">P&L (Highest)</option>
+                        <option value="ticker">Ticker (A-Z)</option>
+                    </select>
+                </div>
+                <button onclick="applyFilters()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                    Apply
+                </button>
+            </div>
+        </div>
+
+        <!-- Trades List -->
+        <div class="space-y-4" id="tradesList">
+            {% for trade in trades %}
+            <div class="trade-card {% if trade.get('pnl', 0) > 0 %}profit{% else %}loss{% endif %} bg-white rounded-xl p-6 border border-gray-200" data-pnl="{{ trade.get('pnl', 0) }}" data-date="{{ trade.get('exit_time', '') }}" data-ticker="{{ trade.get('ticker', '') }}">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800">{{ trade.get('ticker', 'N/A') }}</h3>
+                        <span class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                            {{ trade.get('entry_pattern', 'Unknown').title() }}
+                        </span>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-bold {% if trade.get('pnl', 0) > 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                            ${{ "%.2f"|format(trade.get('pnl', 0)) }}
+                        </p>
+                        <p class="text-xs text-gray-600">
+                            {{ "%.2f"|format(trade.get('pnl_pct', 0) * 100) }}%
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">Entry Price</p>
+                        <p class="text-sm font-semibold text-gray-800">${{ "%.2f"|format(trade.get('entry_price', 0)) }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">Exit Price</p>
+                        <p class="text-sm font-semibold text-gray-800">${{ "%.2f"|format(trade.get('exit_price', 0)) }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">Shares</p>
+                        <p class="text-sm font-semibold text-gray-800">{{ trade.get('shares', 0) }}</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-xs text-gray-600">Duration</p>
+                        <p class="text-sm font-semibold text-gray-800">{{ trade.get('duration', 'N/A') }}</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-center text-sm">
+                    <div class="flex gap-4">
+                        <span class="text-gray-600">
+                            <i class="fas fa-play-circle text-green-500 mr-1"></i>
+                            {{ trade.get('entry_time', 'N/A')[:16] if trade.get('entry_time') else 'N/A' }}
+                        </span>
+                        <span class="text-gray-600">
+                            <i class="fas fa-stop-circle text-red-500 mr-1"></i>
+                            {{ trade.get('exit_time', 'N/A')[:16] if trade.get('exit_time') else 'N/A' }}
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-gray-600">Exit Reason:</span>
+                        <span class="text-gray-800 font-medium">{{ trade.get('exit_reason', 'N/A') }}</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center py-12">
+                <i class="fas fa-history text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-600 text-lg">No completed trades</p>
+                <p class="text-gray-400 text-sm mt-2">Completed trades will appear here</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function applyFilters() {
+            const filterValue = document.getElementById('filterSelect').value;
+            const sortValue = document.getElementById('sortSelect').value;
+            const tradesList = document.getElementById('tradesList');
+            const trades = Array.from(tradesList.children);
+            
+            // Filter trades
+            let filteredTrades = trades.filter(trade => {
+                if (filterValue === 'all') return true;
+                if (filterValue === 'profitable') return parseFloat(trade.dataset.pnl) > 0;
+                if (filterValue === 'losing') return parseFloat(trade.dataset.pnl) < 0;
+                if (filterValue === 'today') {
+                    const tradeDate = new Date(trade.dataset.date).toDateString();
+                    const today = new Date().toDateString();
+                    return tradeDate === today;
+                }
+                return true;
+            });
+            
+            // Sort trades
+            filteredTrades.sort((a, b) => {
+                if (sortValue === 'date') {
+                    return new Date(b.dataset.date) - new Date(a.dataset.date);
+                }
+                if (sortValue === 'pnl') {
+                    return parseFloat(b.dataset.pnl) - parseFloat(a.dataset.pnl);
+                }
+                if (sortValue === 'ticker') {
+                    return a.dataset.ticker.localeCompare(b.dataset.ticker);
+                }
+                return 0;
+            });
+            
+            // Reorder DOM
+            filteredTrades.forEach(trade => tradesList.appendChild(trade));
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

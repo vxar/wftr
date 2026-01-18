@@ -1,6 +1,0 @@
-Ticker,Entry_Time,Entry_Price,Exit_Time,Exit_Price,Pattern,Score,Confidence,Exit_Reason,Hold_Time_Min,PnL_Pct,PnL_Dollar
-INBS,2026-01-09 08:44:00,15.26,2026-01-09 09:29:00,15.86,Golden_Cross_Volume,7,78.0%,Strong Reversal (3 signals),45.0,3.93%,$0.60
-INBS,2026-01-09 09:34:00,17.76,2026-01-09 10:08:00,16.75,Volume_Breakout_Momentum,8,85.0%,Strong Reversal (3 signals),34.0,-5.69%,$-1.01
-INBS,2026-01-09 10:10:00,17.33,2026-01-09 10:30:00,17.29,Slow_Accumulation,7,80.0%,Strong Reversal (3 signals),20.0,-0.23%,$-0.04
-INBS,2026-01-09 12:34:00,17.53,2026-01-09 12:59:00,17.69,Golden_Cross_Volume,7,78.0%,Strong Reversal (3 signals),25.0,0.91%,$0.16
-INBS,2026-01-09 13:04:00,18.58,2026-01-09 13:24:00,17.6,Volume_Breakout_Momentum,8,85.0%,Strong Reversal (3 signals),20.0,-5.27%,$-0.98

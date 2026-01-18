@@ -1,0 +1,12 @@
+{
+  "rejected_trades": [],
+  "reanalysis_history": [],
+  "summary": {
+    "total_rejected": 0,
+    "rejection_reasons": {},
+    "pattern_performance": {},
+    "missed_opportunities": {},
+    "threshold_adjustments": {}
+  },
+  "recommendations": []
+}

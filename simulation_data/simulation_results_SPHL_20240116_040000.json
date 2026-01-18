@@ -1,0 +1,65 @@
+{
+  "config": {
+    "ticker": "SPHL",
+    "detection_time": "2024-01-16 04:00:00",
+    "initial_capital": 2500.0,
+    "max_positions": 1,
+    "commission_per_trade": 0.005,
+    "data_folder": "simulation_data",
+    "stop_loss_pct": 0.15,
+    "take_profit_pct": 0.12,
+    "min_hold_minutes": 10
+  },
+  "trades": [
+    {
+      "ticker": "SPHL",
+      "entry_time": "2026-01-16T08:13:00-05:00",
+      "exit_time": "2026-01-16T09:41:00-05:00",
+      "entry_price": 15.2,
+      "exit_price": 13.5,
+      "quantity": 155,
+      "strategy": "surge",
+      "pnl": -285.7425000000003,
+      "pnl_pct": -0.12067949725058927,
+      "commission": 22.2425,
+      "exit_reason": "trend_reversal",
+      "hold_minutes": 88
+    },
+    {
+      "ticker": "SPHL",
+      "entry_time": "2026-01-16T15:02:00-05:00",
+      "exit_time": "2026-01-16T15:23:00-05:00",
+      "entry_price": 7.75,
+      "exit_price": 8.11,
+      "quantity": 304,
+      "strategy": "breakout",
+      "pnl": 85.33279999999922,
+      "pnl_pct": 0.036039159043491885,
+      "commission": 24.1072,
+      "exit_reason": "low_volume",
+      "hold_minutes": 21
+    },
+    {
+      "ticker": "SPHL",
+      "entry_time": "2026-01-16T18:15:00-05:00",
+      "exit_time": "2026-01-16T18:25:00-05:00",
+      "entry_price": 7.1,
+      "exit_price": 6.82,
+      "quantity": 332,
+      "strategy": "breakout",
+      "pnl": -116.0671999999995,
+      "pnl_pct": -0.048994464298226965,
+      "commission": 23.1072,
+      "exit_reason": "macd_cross_down",
+      "hold_minutes": 10
+    }
+  ],
+  "total_pnl": -316.47690000000057,
+  "total_pnl_pct": -0.12659076000000022,
+  "win_rate": 0.3333333333333333,
+  "total_trades": 3,
+  "winning_trades": 1,
+  "losing_trades": 2,
+  "max_drawdown": 0.12659076000000022,
+  "sharpe_ratio": -0.6953905050355386
+}

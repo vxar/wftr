@@ -1,12 +1,15 @@
 """
 Core Trading Logic Package
-Contains the main trading bot and real-time trader components
+Contains main trading bot and real-time trader components
 """
 # Lazy imports to avoid circular dependencies
 def __getattr__(name):
     if name == 'LiveTradingBot':
         from .live_trading_bot import LiveTradingBot
         return LiveTradingBot
+    elif name == 'AutonomousTradingBot':
+        from .autonomous_trading_bot import AutonomousTradingBot
+        return AutonomousTradingBot
     elif name == 'Trade':
         from .live_trading_bot import Trade
         return Trade
@@ -26,5 +29,6 @@ __all__ = [
     'Trade',
     'RealtimeTrader',
     'TradeSignal',
-    'ActivePosition'
+    'ActivePosition',
+    'AutonomousTradingBot'
 ]

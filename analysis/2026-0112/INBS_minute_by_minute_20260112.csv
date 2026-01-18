@@ -1,7 +1,0 @@
-time,price,volume,volume_ratio,momentum_5,momentum_10,in_entry_window,in_exit_window,entry_signal,pattern,confidence,rejection_reasons_str
-2026-01-12 04:33:00-05:00,19.6,102,0,1.0830324909747335,6.2330623306233175,True,False,False,,0,"Low volume stock (total 8,305 < 100,000 over 60 min, threshold for hour 4)"
-2026-01-12 04:42:00-05:00,20.0,536,0,1.6776817488561173,8.695652173913052,True,False,False,,0,"Low volume stock (total 8,840 < 100,000 over 60 min, threshold for hour 4)"
-2026-01-12 04:47:00-05:00,20.64,123,0,4.984740590030521,10.197544046983449,True,False,False,,0,"Low volume stock (total 8,763 < 100,000 over 60 min, threshold for hour 4)"
-2026-01-12 04:48:00-05:00,21.11,101,0,7.979539641943727,11.811440677966106,True,False,False,,0,"Low volume stock (total 8,860 < 100,000 over 60 min, threshold for hour 4)"
-2026-01-12 04:49:00-05:00,22.0,244,0,12.244897959183664,16.525423728813564,True,False,False,,0,"Low volume stock (total 8,994 < 100,000 over 60 min, threshold for hour 4)"
-2026-01-12 04:50:00-05:00,39.0,1959,0,95.0,101.13460546673542,True,True,False,,0,"Low volume stock (total 10,918 < 100,000 over 60 min, threshold for hour 4)"

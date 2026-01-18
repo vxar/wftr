@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 from datetime import datetime, time as dt_time
 import traceback
-from utils.utils import logger
+from ..utils.utils import logger
 import json
 
 log = logger.get_logger()

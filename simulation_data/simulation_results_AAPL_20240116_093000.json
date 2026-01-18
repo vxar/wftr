@@ -1,0 +1,79 @@
+{
+  "config": {
+    "ticker": "AAPL",
+    "detection_time": "2024-01-16 09:30:00",
+    "initial_capital": 2500.0,
+    "max_positions": 1,
+    "commission_per_trade": 0.005,
+    "data_folder": "simulation_data",
+    "stop_loss_pct": 0.04,
+    "take_profit_pct": 0.08,
+    "min_hold_minutes": 10
+  },
+  "trades": [
+    {
+      "ticker": "AAPL",
+      "entry_time": "2026-01-16T09:31:00-05:00",
+      "exit_time": "2026-01-16T09:41:00-05:00",
+      "entry_price": 258.52,
+      "exit_price": 258.08,
+      "quantity": 9,
+      "strategy": "ma_cross",
+      "pnl": -27.207000000000335,
+      "pnl_pct": -0.011635309449965233,
+      "commission": 23.247,
+      "exit_reason": "low_volume",
+      "hold_minutes": 10
+    },
+    {
+      "ticker": "AAPL",
+      "entry_time": "2026-01-16T14:05:00-05:00",
+      "exit_time": "2026-01-16T14:15:00-05:00",
+      "entry_price": 257.01,
+      "exit_price": 256.27,
+      "quantity": 9,
+      "strategy": "macd_cross",
+      "pnl": -29.757600000000366,
+      "pnl_pct": -0.012800864747504996,
+      "commission": 23.0976,
+      "exit_reason": "macd_cross_down",
+      "hold_minutes": 10
+    },
+    {
+      "ticker": "AAPL",
+      "entry_time": "2026-01-16T18:12:00-05:00",
+      "exit_time": "2026-01-16T18:22:00-05:00",
+      "entry_price": 255.35,
+      "exit_price": 255.36,
+      "quantity": 9,
+      "strategy": "ma_cross",
+      "pnl": -22.891949999999724,
+      "pnl_pct": -0.009911476492610257,
+      "commission": 22.98195,
+      "exit_reason": "low_volume",
+      "hold_minutes": 10
+    },
+    {
+      "ticker": "AAPL",
+      "entry_time": "2026-01-16T18:29:00-05:00",
+      "exit_time": "2026-01-16T18:39:00-05:00",
+      "entry_price": 255.37,
+      "exit_price": 255.37,
+      "quantity": 9,
+      "strategy": "macd_cross",
+      "pnl": -22.983299999999872,
+      "pnl_pct": -0.00995024875621885,
+      "commission": 22.9833,
+      "exit_reason": "macd_cross_down",
+      "hold_minutes": 10
+    }
+  ],
+  "total_pnl": -102.8398500000003,
+  "total_pnl_pct": -0.04113594000000012,
+  "win_rate": 0.0,
+  "total_trades": 4,
+  "winning_trades": 0,
+  "losing_trades": 4,
+  "max_drawdown": 0.04113594000000012,
+  "sharpe_ratio": -9.109776161929995
+}

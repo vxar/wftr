@@ -257,6 +257,15 @@
             background: var(--hover);
         }
         
+        table a {
+            transition: color 0.2s;
+        }
+        
+        table a:hover {
+            color: var(--primary-dark);
+            text-decoration: underline;
+        }
+        
         .badge {
             display: inline-block;
             padding: 4px 8px;
@@ -745,8 +754,9 @@
                     }
                     
                     const statusClass = trade.status === 'WIN' ? 'win' : 'loss';
+                    const ticker = trade.ticker.trim();
                     html += `<tr>`;
-                    html += `<td>${trade.ticker}</td>`;
+                    html += `<td><a href="/chart/${ticker}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; cursor: pointer;" title="View ${ticker} chart with entry/exit points">${ticker}</a></td>`;
                     html += `<td>${formatDate(trade.entry_time)}</td>`;
                     html += `<td>${formatDate(trade.exit_time)}</td>`;
                     html += `<td>${formatCurrency(trade.entry_price)}</td>`;

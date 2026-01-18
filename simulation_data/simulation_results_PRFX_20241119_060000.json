@@ -1,0 +1,51 @@
+{
+  "config": {
+    "ticker": "PRFX",
+    "detection_time": "2024-11-19 06:00:00",
+    "initial_capital": 2500.0,
+    "max_positions": 1,
+    "commission_per_trade": 0.005,
+    "data_folder": "simulation_data",
+    "stop_loss_pct": 0.15,
+    "take_profit_pct": 0.12,
+    "min_hold_minutes": 5
+  },
+  "trades": [
+    {
+      "ticker": "PRFX",
+      "entry_time": "2024-11-19T10:15:00-05:00",
+      "exit_time": "2024-11-19T10:28:00-05:00",
+      "entry_price": 1.548,
+      "exit_price": 1.75,
+      "quantity": 1526,
+      "strategy": "breakout",
+      "pnl": 283.08826,
+      "pnl_pct": 0.11924228984277578,
+      "commission": 25.16374,
+      "exit_reason": "trend_reversal",
+      "hold_minutes": 13
+    },
+    {
+      "ticker": "PRFX",
+      "entry_time": "2024-11-19T12:03:00-05:00",
+      "exit_time": "2024-11-19T20:00:00-05:00",
+      "entry_price": 1.396,
+      "exit_price": 1.06,
+      "quantity": 1692,
+      "strategy": "surge",
+      "pnl": -589.2897599999997,
+      "pnl_pct": -0.24824302555987957,
+      "commission": 20.77776,
+      "exit_reason": "end_of_simulation",
+      "hold_minutes": 477
+    }
+  ],
+  "total_pnl": -306.20149999999967,
+  "total_pnl_pct": -0.12248059999999987,
+  "win_rate": 0.5,
+  "total_trades": 2,
+  "winning_trades": 1,
+  "losing_trades": 1,
+  "max_drawdown": 0.21173951558402954,
+  "sharpe_ratio": -0.3510364368594078
+}

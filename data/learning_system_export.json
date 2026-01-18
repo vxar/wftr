@@ -1,0 +1,29 @@
+{
+  "trade_history": [],
+  "adaptive_parameters": {
+    "confidence_threshold": 0.72,
+    "volume_threshold": 1.5,
+    "volatility_threshold": 0.7,
+    "pattern_weights": {
+      "Volume_Breakout_Momentum": 0.85,
+      "RSI_Accumulation_Entry": 0.75,
+      "Golden_Cross_Volume": 0.78,
+      "Slow_Accumulation": 0.8,
+      "MACD_Acceleration_Breakout": 0.82,
+      "Consolidation_Breakout": 0.83
+    }
+  },
+  "model_performance": {
+    "entry_classifier_accuracy": 0.0,
+    "profit_regressor_mse": 0.0,
+    "last_update_time": null,
+    "total_updates": 0
+  },
+  "learning_metrics": {
+    "total_trades_analyzed": 0,
+    "successful_predictions": 0,
+    "failed_predictions": 0,
+    "prediction_accuracy": 0.0,
+    "parameter_adjustments": 0
+  }
+}
