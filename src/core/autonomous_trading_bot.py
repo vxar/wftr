@@ -81,8 +81,8 @@ class AutonomousTradingBot:
                 min_volume=50000,
                 min_price=0.50,
                 max_price=1000.0,
-                max_manipulation_score=0.7,
-                min_quality_score=0.6
+                max_manipulation_score=0.9,  # Increased from 0.7 to 0.9 (less strict)
+                min_quality_score=0.3       # Decreased from 0.6 to 0.3 (more permissive)
             )
             
             # Multi-timeframe Analyzer
@@ -197,13 +197,20 @@ class AutonomousTradingBot:
                     time.sleep(60)  # Wait 1 minute before retrying
                     continue
                 
-                # Step 1: Scan for opportunities
-                top_gainers = self.scanner.get_top_quality_gainers(self.config['scanner_max_tickers'])
+                # Step 1: Scan for opportunities (simplified - no filtering)
+                logger.info("Starting scanner to fetch gainers...")
+                top_gainers = self.scanner.fetch_and_analyze_gainers(self.config['scanner_max_tickers'])
+                logger.info(f"Scanner returned {len(top_gainers)} gainers")
                 
                 if not top_gainers:
-                    logger.info("No quality opportunities found")
+                    logger.warning("No gainers found - check scanner logs for details")
                     time.sleep(self.config['scanner_update_interval'])
                     continue
+                
+                # Display all found gainers in dashboard (no filtering)
+                logger.info(f"Found {len(top_gainers)} gainers to monitor")
+                for gainer in top_gainers[:5]:  # Show first 5 in logs
+                    logger.info(f"  Monitoring: {gainer.symbol} - {gainer.change_pct:.2f}% (${gainer.price:.2f})")
                 
                 # Step 2: Analyze each opportunity
                 for gainer in top_gainers:
@@ -228,6 +235,10 @@ class AutonomousTradingBot:
     def _analyze_and_process_gainer(self, gainer, current_time):
         """Analyze and potentially process a gainer"""
         ticker = gainer.symbol
+        
+        # Debug logging to check what we're actually passing
+        logger.info(f"Processing gainer: {gainer}")
+        logger.info(f"Extracted ticker: {ticker} (type: {type(ticker)})")
         
         try:
             # Get current market data

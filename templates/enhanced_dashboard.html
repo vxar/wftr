@@ -280,8 +280,8 @@
     <script>
         // Performance chart
         const ctx = document.getElementById('performanceChart').getContext('2d');
-        const currentCapital = {{ bot_status.get('current_capital', 10000) }};
-        const totalPositionValue = {{ positions.get('total_value', 0) }};
+        const currentCapital = JSON.parse('{{ bot_status.current_capital | tojson }}') || 10000;
+        const totalPositionValue = JSON.parse('{{ positions.total_value | tojson }}') || 0;
         
         const performanceChart = new Chart(ctx, {
             type: 'line',
@@ -440,6 +440,18 @@
 
         function displayDailyAnalysis(data) {
             const container = document.getElementById('dailyAnalysisContent');
+            
+            // Handle no report available status
+            if (data.status === 'no_report') {
+                container.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-chart-line text-4xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-600 text-lg">${data.message}</p>
+                        <p class="text-gray-400 text-sm mt-2">Date: ${data.date}</p>
+                    </div>
+                `;
+                return;
+            }
             
             if (!data || data.total_trades === 0) {
                 container.innerHTML = `

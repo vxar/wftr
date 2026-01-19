@@ -64,7 +64,14 @@ class EnhancedDashboard:
         }
         
         # Setup routes
-        self._setup_routes()
+        try:
+            self._setup_routes()
+            logger.info("All routes registered successfully")
+        except Exception as e:
+            logger.error(f"Error setting up routes: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         self._setup_socketio_events()
         
         # Template data
@@ -153,21 +160,87 @@ class EnhancedDashboard:
             """Get performance chart data"""
             return jsonify(self._get_performance_chart_data())
         
+        @self.app.route('/api/test-route')
+        def api_test_route():
+            """Test route to verify routing works"""
+            return jsonify({'status': 'ok', 'message': 'Route registration works'})
+        
+        @self.app.route('/api/tickers')
+        def api_tickers():
+            """Get monitored tickers"""
+            try:
+                # Get tickers from the bot
+                if hasattr(self, 'trading_bot') and self.trading_bot:
+                    # Get tickers that the bot is currently monitoring
+                    monitored_tickers = []
+                    
+                    # Get current gainers from scanner
+                    if hasattr(self.trading_bot, 'scanner'):
+                        gainers = self.trading_bot.scanner.fetch_and_analyze_gainers(30)
+                        for gainer in gainers[:30]:  # Limit to 30
+                            monitored_tickers.append({
+                                'symbol': gainer.symbol,
+                                'price': gainer.price,
+                                'change_pct': gainer.change_pct,
+                                'volume': gainer.volume,
+                                'surge_score': gainer.surge_score,
+                                'quality_score': gainer.quality_score
+                            })
+                    
+                    return jsonify({
+                        'tickers': monitored_tickers,
+                        'count': len(monitored_tickers),
+                        'last_update': datetime.now(self.et_timezone).strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                else:
+                    return jsonify({'tickers': [], 'count': 0, 'error': 'Bot not available'})
+            except Exception as e:
+                logger.error(f"Error getting tickers: {e}")
+                return jsonify({'error': str(e), 'tickers': []})
+        
         @self.app.route('/api/daily-analysis')
         def api_daily_analysis():
             """Get daily trade analysis report"""
             try:
+                logger.info("Daily analysis endpoint called")
+                if not hasattr(self, 'daily_analyzer'):
+                    logger.error("daily_analyzer not initialized")
+                    return jsonify({'error': 'Daily analyzer not initialized'})
+                
                 report = self.daily_analyzer.get_latest_report()
                 if report:
+                    logger.info(f"Returning existing report: {report}")
                     return jsonify(asdict(report))
                 else:
-                    # Run analysis for today if no report exists
-                    today = datetime.now(self.et_timezone).strftime('%Y-%m-%d')
-                    report = self.daily_analyzer.run_daily_analysis(today)
-                    return jsonify(asdict(report))
+                    # Don't run analysis automatically on page load - just return status
+                    logger.info("No existing report found, returning status (not running analysis on page load)")
+                    return jsonify({
+                        'status': 'no_report',
+                        'message': 'No daily analysis report available. Click "Run Analysis" to generate one.',
+                        'date': datetime.now(self.et_timezone).strftime('%Y-%m-%d'),
+                        'total_trades': 0,
+                        'winning_trades': 0,
+                        'losing_trades': 0,
+                        'win_rate': 0.0,
+                        'total_pnl': 0.0,
+                        'net_profit': 0.0,
+                        'largest_win': 0.0,
+                        'largest_loss': 0.0,
+                        'avg_win': 0.0,
+                        'avg_loss': 0.0,
+                        'sharpe_ratio': 0.0,
+                        'max_drawdown': 0.0
+                    })
             except Exception as e:
                 logger.error(f"Error getting daily analysis: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
                 return jsonify({'error': str(e)})
+        
+        @self.app.route('/api/daily-analysis/test')
+        def api_daily_analysis_test():
+            """Test endpoint for daily analysis"""
+            return jsonify({'status': 'ok', 'message': 'Daily analysis routing works'})
         
         @self.app.route('/api/daily-analysis/run', methods=['POST'])
         def api_run_daily_analysis():
@@ -615,6 +688,21 @@ class EnhancedDashboard:
     def run(self):
         """Run the dashboard"""
         logger.info(f"Starting enhanced dashboard on {self.host}:{self.port}")
+        
+        # Auto-start trading bot if configured
+        if hasattr(self, 'trading_bot') and self.trading_bot:
+            try:
+                # Check if bot should auto-start (you can customize this logic)
+                auto_start = True  # Set to True for auto-start
+                if auto_start and not self.trading_bot.running:
+                    logger.info("Auto-starting trading bot...")
+                    self.trading_bot.start()
+                    flash('Trading bot auto-started', 'success')
+                else:
+                    logger.info("Bot already running or auto-start disabled")
+            except Exception as e:
+                logger.error(f"Error auto-starting bot: {e}")
+        
         self.socketio.run(
             self.app,
             host=self.host,

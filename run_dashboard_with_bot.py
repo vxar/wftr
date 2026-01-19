@@ -7,8 +7,8 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import dashboard
-from simple_dashboard import set_bot_instance, run_dashboard
+# Import enhanced dashboard
+from src.web.enhanced_dashboard import EnhancedDashboard
 
 # Try to import and create bot instance
 try:
@@ -26,19 +26,24 @@ try:
     print("🤖 Real trading bot connected to dashboard")
     print("📊 Dashboard will show live trading data")
     
+    # Create enhanced dashboard instance with bot
+    dashboard = EnhancedDashboard(trading_bot=bot)
+    
+    print("🤖 Real trading bot connected to enhanced dashboard")
+    print("📊 Dashboard will show live trading data")
+    
 except ImportError as e:
     print(f"⚠️ Could not import trading bot: {e}")
-    print("📊 Dashboard will run with demo data")
     bot = None
+    dashboard = None
 except Exception as e:
     print(f"❌ Error creating bot: {e}")
     bot = None
+    dashboard = None
 
-# Set bot instance for dashboard
-set_bot_instance(bot)
-
-if __name__ == '__main__':
-    try:
+# Run the enhanced dashboard
+if __name__ == "__main__":
+    if dashboard:
         print("🌐 Starting enhanced dashboard...")
         print("📱 Open http://localhost:5000 to view")
         print("🔄 Real-time updates every 5 seconds")
@@ -48,10 +53,8 @@ if __name__ == '__main__':
         print("   • Individual position controls")
         print("   • Modern glass-morphism UI")
         
-        # Run dashboard
-        run_dashboard(port=5000)
+        # Run the enhanced dashboard
+        dashboard.run()
         
-    except KeyboardInterrupt:
-        print("\n👋 Dashboard stopped")
-    except Exception as e:
-        print(f"❌ Error: {e}")
+    else:
+        print("\n👋 No dashboard to run")

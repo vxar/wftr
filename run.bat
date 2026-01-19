@@ -12,7 +12,7 @@ echo.
 cd /d "%~dp0"
 
 REM Run the enhanced bot
-python run_enhanced_bot.py
+python run_dashboard_with_bot.py
 if %ERRORLEVEL% EQU 0 goto end
 
 REM Fallback to simple bot

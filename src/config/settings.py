@@ -26,9 +26,9 @@ class TradingConfig:
     max_positions: int = 3  # Maximum concurrent positions
     
     # Risk management
-    max_trades_per_day: int = 8  # Limit trades per day for quality
-    max_daily_loss: float = -300.0  # Stop trading if daily loss exceeds this
-    consecutive_loss_limit: int = 3  # Pause after N consecutive losses
+    max_trades_per_day: int = 1000  # Limit trades per day for quality
+    max_daily_loss: float = -3000.0  # Stop trading if daily loss exceeds this
+    consecutive_loss_limit: int = 300  # Pause after N consecutive losses
 
 
 @dataclass
@@ -51,7 +51,7 @@ class CapitalConfig:
     initial_capital: float = 10000.0
     target_capital: float = 100000.0
     daily_profit_target_min: float = 500.0
-    daily_profit_target_max: float = 500.0
+    daily_profit_target_max: float = 50000.0
 
 
 @dataclass

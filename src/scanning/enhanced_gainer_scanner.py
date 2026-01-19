@@ -63,15 +63,15 @@ class EnhancedGainerScanner:
         """Get current market session type"""
         return get_rank_type()
     
-    def fetch_and_analyze_gainers(self, page_size: int = 50) -> List[GainerData]:
+    def fetch_and_analyze_gainers(self, page_size: int = 30) -> List[GainerData]:
         """
-        Fetch top gainers and apply comprehensive analysis
+        Fetch top gainers and return them directly without filtering
         
         Args:
             page_size: Number of gainers to fetch
             
         Returns:
-            List of analyzed and filtered gainer data
+            List of gainer data (no filtering applied)
         """
         try:
             rank_type = self.get_current_rank_type()
@@ -81,38 +81,154 @@ class EnhancedGainerScanner:
                 logger.warning(f"No gainers returned for rank type: {rank_type}")
                 return []
             
-            analyzed_gainers = []
-            for gainer in raw_gainers:
-                try:
-                    gainer_data = self._analyze_single_gainer(gainer, rank_type)
-                    if gainer_data and self._passes_quality_filters(gainer_data):
-                        analyzed_gainers.append(gainer_data)
-                except Exception as e:
-                    logger.warning(f"Error analyzing gainer {gainer.get('symbol', 'Unknown')}: {e}")
-                    continue
+            # Extract the actual data from the response
+            gainers_list = raw_gainers
+            if isinstance(raw_gainers, dict) and 'data' in raw_gainers:
+                gainers_list = raw_gainers['data']
+            elif not isinstance(raw_gainers, list):
+                logger.error(f"Unexpected response format: {type(raw_gainers)}")
+                return []
             
-            # Sort by quality score (highest first)
-            analyzed_gainers.sort(key=lambda x: x.quality_score, reverse=True)
+            if not gainers_list:
+                logger.warning(f"No gainers data found in response for rank type: {rank_type}")
+                return []
             
-            logger.info(f"Analyzed {len(raw_gainers)} gainers, {len(analyzed_gainers)} passed quality filters")
-            return analyzed_gainers
+            logger.info(f"=== RAW TOP GAINERS ({len(gainers_list)} total) ===")
+            simple_gainers = []
+            for i, gainer in enumerate(gainers_list):
+                if isinstance(gainer, dict):
+                    # Get symbol with multiple possible field names
+                    symbol = (gainer.get('symbol') or 
+                             gainer.get('ticker') or 
+                             gainer.get('code') or 
+                             gainer.get('disSymbol') or f'TICKER_{i+1}')
+                    
+                    # Get price with multiple possible field names
+                    price = (gainer.get('price') or 
+                             gainer.get('currentPrice') or 
+                             gainer.get('last') or 
+                             gainer.get('close') or 0)
+                    
+                    # Calculate change percentage
+                    change_pct = self._calculate_change_pct(gainer, rank_type)
+                    
+                    logger.info(f"  {i+1}. {symbol}: {price} ({change_pct:.2f}%)")
+                    
+                    # Create simple GainerData object
+                    simple_gainer = GainerData(
+                        symbol=symbol,
+                        price=float(price) if price else 0,
+                        change_pct=change_pct,
+                        volume=int(gainer.get('volume', 0)),
+                        avg_volume=int(gainer.get('avgVol10D', 0)),
+                        volume_ratio=1.0,
+                        market_cap=float(gainer.get('marketValue', 0)),
+                        sector=gainer.get('sector', ''),
+                        rank_type=rank_type,
+                        surge_score=0.5,
+                        manipulation_score=0.3,
+                        quality_score=0.7
+                    )
+                    simple_gainers.append(simple_gainer)
+                else:
+                    logger.info(f"  {i+1}. Non-dict data: {gainer}")
+            
+            logger.info("=== END GAINER LIST ===")
+            return simple_gainers
             
         except Exception as e:
-            logger.error(f"Error fetching and analyzing gainers: {e}")
+            logger.error(f"Error fetching gainers: {e}")
             return []
+    
+    def _calculate_change_pct(self, gainer: Dict, rank_type: str) -> float:
+        """
+        Calculate percentage change based on market session
+        
+        Args:
+            gainer: Raw gainer data
+            rank_type: Current market session ('preMarket', '1d', 'afterMarket')
+            
+        Returns:
+            Percentage change
+        """
+        try:
+            # Try multiple possible field names for current price
+            current_price = float((gainer.get('price') or 
+                                 gainer.get('currentPrice') or 
+                                 gainer.get('last') or 
+                                 gainer.get('close') or 0))
+            
+            if current_price == 0:
+                return 0.0
+            
+            if rank_type == 'preMarket':
+                # Pre-market: Change from previous close
+                prev_close = float((gainer.get('preClose') or 
+                                  gainer.get('previousClose') or 
+                                  gainer.get('prevClose') or 0))
+                if prev_close == 0:
+                    return 0.0
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+            elif rank_type == 'afterMarket':
+                # After-hours: Change from regular close
+                # Use 'close' field for regular session close
+                regular_close = float((gainer.get('close') or 
+                                     gainer.get('regularClose') or 
+                                     gainer.get('dayClose') or 0))
+                if regular_close == 0:
+                    return 0.0
+                change_pct = ((current_price - regular_close) / regular_close) * 100
+                
+            else:  # '1d' - regular hours
+                # Regular hours: Change from previous close
+                prev_close = float((gainer.get('preClose') or 
+                                  gainer.get('previousClose') or 
+                                  gainer.get('prevClose') or 0))
+                if prev_close == 0:
+                    return 0.0
+                change_pct = ((current_price - prev_close) / prev_close) * 100
+            
+            return change_pct
+            
+        except Exception as e:
+            logger.warning(f"Error calculating change pct: {e}")
+            return 0.0
     
     def _analyze_single_gainer(self, gainer: Dict, rank_type: str) -> Optional[GainerData]:
         """Analyze a single gainer for quality and manipulation"""
         try:
-            symbol = gainer.get('symbol', '')
-            if not symbol or symbol in self.blacklist:
+            # Try multiple possible field names for symbol
+            symbol = (gainer.get('symbol') or 
+                     gainer.get('ticker') or 
+                     gainer.get('code') or 
+                     gainer.get('disSymbol') or 'Unknown')
+            
+            if not symbol or symbol == 'Unknown' or symbol in self.blacklist:
                 return None
             
-            price = float(gainer.get('price', 0))
-            change_pct = float(gainer.get('changeRatio', 0)) * 100
-            volume = int(gainer.get('volume', 0))
-            avg_volume = int(gainer.get('avgVol10D', 0))
-            market_cap = float(gainer.get('marketValue', 0))
+            # Try multiple possible field names for price
+            price = float((gainer.get('price') or 
+                         gainer.get('currentPrice') or 
+                         gainer.get('last') or 
+                         gainer.get('close') or 0))
+            
+            change_pct = self._calculate_change_pct(gainer, rank_type)  # Use new calculation method
+            
+            # Try multiple possible field names for volume
+            volume = int((gainer.get('volume') or 
+                         gainer.get('vol') or 
+                         gainer.get('turnoverVolume') or 0))
+            
+            # Try multiple possible field names for average volume
+            avg_volume = int((gainer.get('avgVol10D') or 
+                             gainer.get('avgVolume') or 
+                             gainer.get('averageVolume') or 0))
+            
+            # Try multiple possible field names for market cap
+            market_cap = float((gainer.get('marketValue') or 
+                              gainer.get('marketCap') or 
+                              gainer.get('mktCap') or 0))
             
             # Basic price and volume filters
             if not (self.min_price <= price <= self.max_price):
@@ -124,7 +240,7 @@ class EnhancedGainerScanner:
             # Calculate metrics
             volume_ratio = volume / max(avg_volume, 1)
             surge_score = self._calculate_surge_score(change_pct, volume_ratio)
-            manipulation_score = self._calculate_manipulation_score(gainer, surge_score)
+            manipulation_score = self._calculate_manipulation_score(gainer, surge_score, rank_type)  # Pass rank_type
             quality_score = self._calculate_quality_score(gainer, surge_score, manipulation_score)
             
             return GainerData(
@@ -167,7 +283,7 @@ class EnhancedGainerScanner:
         surge_score = (price_score * 0.6) + (volume_score * 0.4)
         return surge_score
     
-    def _calculate_manipulation_score(self, gainer: Dict, surge_score: float) -> float:
+    def _calculate_manipulation_score(self, gainer: Dict, surge_score: float, rank_type: str) -> float:
         """
         Calculate manipulation detection score
         
@@ -176,6 +292,7 @@ class EnhancedGainerScanner:
         Args:
             gainer: Raw gainer data
             surge_score: Previously calculated surge score
+            rank_type: Current market session
             
         Returns:
             Manipulation score (0-1, lower is better)
@@ -183,7 +300,7 @@ class EnhancedGainerScanner:
         manipulation_score = 0.0
         
         # Factor 1: Extremely high price change with low volume
-        change_pct = float(gainer.get('changeRatio', 0)) * 100
+        change_pct = self._calculate_change_pct(gainer, rank_type)  # Use new calculation
         volume_ratio = int(gainer.get('volume', 0)) / max(int(gainer.get('avgVol10D', 0)), 1)
         
         if change_pct > 100 and volume_ratio < 5:
@@ -266,7 +383,7 @@ class EnhancedGainerScanner:
             return False
         
         # Additional sanity checks
-        if gainer.change_pct > 1000:  # >1000% change is likely reverse split
+        if gainer.change_pct > 5000:  # >5000% change is likely reverse split (increased from 1000%)
             return False
         
         return True
