@@ -9,7 +9,7 @@ import sys
 
 def run_simulation(ticker, detection_time, initial_capital=2500.0, **kwargs):
     """Run simulation for a single stock"""
-    # Default configuration
+    # Enhanced configuration using same logic as realtime bot
     config_params = {
         'ticker': ticker,
         'detection_time': detection_time,
@@ -17,9 +17,12 @@ def run_simulation(ticker, detection_time, initial_capital=2500.0, **kwargs):
         'max_positions': 1,
         'commission_per_trade': 0.005,  # 0.5% commission
         'data_folder': 'simulation_data',
-        'stop_loss_pct': 0.06,  # 6% stop loss
-        'take_profit_pct': 0.08,  # 8% take profit
-        'min_hold_minutes': 10  # Minimum hold time
+        # Note: stop_loss_pct and take_profit_pct are now handled by IntelligentPositionManager
+        # The position manager uses enhanced SURGE/SWING/BREAKOUT configurations
+        # These parameters are kept for backward compatibility but not used in core logic
+        'stop_loss_pct': 0.12,  # 12% (matches SURGE config)
+        'take_profit_pct': 0.25,  # 25% (matches SURGE final target)
+        'min_hold_minutes': 5  # Reduced to allow faster exits for strong movers
     }
     
     # Override with any provided kwargs
@@ -71,9 +74,9 @@ def main():
     parser.add_argument('--capital', type=float, default=2500.0, help='Initial capital')
     parser.add_argument('--max-positions', type=int, default=1, help='Max positions')
     parser.add_argument('--commission', type=float, default=0.005, help='Commission per trade (0.005 = 0.5 percent)')
-    parser.add_argument('--stop-loss', type=float, default=0.06, help='Stop loss percentage (0.06 = 6 percent)')
-    parser.add_argument('--take-profit', type=float, default=0.08, help='Take profit percentage (0.08 = 8 percent)')
-    parser.add_argument('--min-hold', type=int, default=10, help='Minimum hold minutes')
+    parser.add_argument('--stop-loss', type=float, default=0.12, help='Stop loss percentage (0.12 = 12 percent, matches SURGE config)')
+    parser.add_argument('--take-profit', type=float, default=0.25, help='Take profit percentage (0.25 = 25 percent, matches SURGE final target)')
+    parser.add_argument('--min-hold', type=int, default=5, help='Minimum hold minutes (reduced for strong movers)')
     
     args = parser.parse_args()
     
@@ -101,10 +104,14 @@ def main():
         else:
             stocks = default_stocks
     
-    print("🎯 PURE TRADE SIMULATOR")
+    print("🎯 ENHANCED PURE TRADE SIMULATOR")
     print("=" * 50)
-    print("Architecture: Pure wrapper - ALL logic in position manager")
-    print("No trading logic in simulator - only data feeding")
+    print("Architecture: Pure wrapper - ALL logic in IntelligentPositionManager")
+    print("✅ Enhanced Features:")
+    print("  - Dynamic surge detection with recovery checks")
+    print("  - Position-specific exit logic (SURGE/SWING/BREAKOUT)")
+    print("  - Momentum-based profit target adjustments")
+    print("  - Exit delays for strong movers")
     print("=" * 50)
     
     # Run simulations

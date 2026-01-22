@@ -381,24 +381,24 @@ class RealtimeTrader:
         is_uptrend = True
         uptrend_reason = ""
         
-        # Check 1: Current price should be at or near recent high (within 5% tolerance)
+        # Check 1: Current price should be at or near recent high (within 10% tolerance for surge)
         if current_idx >= 5:
             # Check last 5 minutes for recent high
             recent_5min_prices = df.iloc[max(0, current_idx-5):current_idx]['close'].values
             if len(recent_5min_prices) >= 3:
                 recent_high = max(recent_5min_prices)
-                # Reject if current price is more than 5% below recent high (significant pullback)
-                if current_price < recent_high * 0.95:
+                # Reject if current price is more than 10% below recent high (more relaxed for surge)
+                if current_price < recent_high * 0.90:
                     is_uptrend = False
                     uptrend_reason = f"Price ${current_price:.4f} is {((recent_high - current_price) / recent_high * 100):.1f}% below recent high ${recent_high:.4f}"
         
-        # Check 2: Ensure price is not declining from previous bar (significant drop)
+        # Check 2: Ensure price is not declining from previous bar (more relaxed for surge)
         if is_uptrend and current_idx >= 1:
             prev_price = df.iloc[current_idx-1].get('close', 0)
             if prev_price > 0:
                 price_change_from_prev = ((current_price - prev_price) / prev_price) * 100
-                # Reject if price dropped more than 2% from previous bar
-                if price_change_from_prev < -2.0:
+                # Reject if price dropped more than 5% from previous bar (relaxed from 2%)
+                if price_change_from_prev < -5.0:
                     is_uptrend = False
                     uptrend_reason = f"Price ${current_price:.4f} dropped {abs(price_change_from_prev):.1f}% from previous ${prev_price:.4f}"
         

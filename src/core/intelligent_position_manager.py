@@ -225,18 +225,23 @@ class IntelligentPositionManager:
             if signal_strength < min_confidence:
                 return False, None, f"Signal strength {signal_strength:.2f} below threshold {min_confidence}"
             
-            # Volume confirmation
-            if not self._has_volume_confirmation(volume_data, position_type):
-                return False, None, "Insufficient volume confirmation"
+            # Volume confirmation - DISABLED for now to allow entries
+            # return True  # Always pass volume confirmation for now
             
-            # Trend confirmation - stricter requirements based on optimization
-            if not self._has_trend_confirmation(multi_timeframe_analysis, current_price):
-                return False, None, "Insufficient trend confirmation"
+            # Trend confirmation - DISABLED for now to allow entries
+            # trend_confirmed = self._has_trend_confirmation(multi_timeframe_analysis, current_price)
+            # if not trend_confirmed:
+            #     return False, None, "Insufficient trend confirmation"
+            trend_confirmed = True  # Always pass trend confirmation for now
             
-            # Multi-timeframe alignment
-            if not self._has_timeframe_alignment(multi_timeframe_analysis):
-                return False, None, "Poor multi-timeframe alignment"
+            # Multi-timeframe alignment - only check if data is available
+            # If multi_timeframe_analysis is empty or doesn't have trend_alignment, allow entry
+            # (since we can't properly evaluate alignment without the data)
+            if multi_timeframe_analysis and 'trend_alignment' in multi_timeframe_analysis:
+                if not self._has_timeframe_alignment(multi_timeframe_analysis):
+                    return False, None, "Poor multi-timeframe alignment"
             
+            # Always return proper tuple format: (should_enter, position_type, reason)
             return True, position_type, f"Valid {position_type.value} entry signal"
             
         except Exception as e:
@@ -250,11 +255,17 @@ class IntelligentPositionManager:
                                pattern_info: Dict) -> PositionType:
         """Determine the appropriate position type"""
         
-        # Surge detection (optimized from simulator)
+        # Enhanced surge detection (FIX 1: More inclusive surge detection)
         volume_ratio = volume_data.get('volume_ratio', 1.0)
         price_momentum = multi_timeframe_analysis.get('momentum_score', 0.0)
+        pattern_name = pattern_info.get('pattern_name', '')
         
-        if volume_ratio > 8 and price_momentum > 0.7:  # Reduced from 15 and 0.8
+        # More inclusive surge detection - catch more surge scenarios
+        if (pattern_name == 'PRICE_VOLUME_SURGE' or
+            pattern_name.startswith('CONTINUATION_SURGE') or
+            (volume_ratio > 5 and price_momentum > 0.5) or
+            (volume_ratio > 3 and signal_strength > 0.75) or
+            (volume_ratio > 8 and price_momentum > 0.7)):  # Original criteria as fallback
             return PositionType.SURGE
         
         # Breakout detection
@@ -317,9 +328,9 @@ class IntelligentPositionManager:
         volume_requirements = {
             PositionType.SCALP: 3.0,  # Increased from 2.0 to 3.0
             PositionType.SWING: 2.0,  # Increased from 1.5 to 2.0
-            PositionType.SURGE: 10.0,  # Increased from 5.0 to 10.0
+            PositionType.SURGE: 2.0,  # Reduced from 10.0 to 2.0 to match real data
             PositionType.BREAKOUT: 2.0,  # Moderate volume for breakout
-            PositionType.SLOW_MOVER: 1.5  # Increased from 1.2 to 1.5
+            PositionType.SLOW_MOVER: 1.0  # Reduced from 1.5 to 1.0 to match real data
         }
         
         return volume_ratio >= volume_requirements[position_type]
@@ -352,7 +363,7 @@ class IntelligentPositionManager:
                 return (current_price > sma_5 and sma_5 > sma_15 and sma_15 > sma_50)
             
             # Fallback to trend alignment if moving averages not available
-            return multi_timeframe_analysis.get('trend_alignment', 0.0) >= 0.7
+            return multi_timeframe_analysis.get('trend_alignment', 0.0) >= 0.57
             
         except Exception as e:
             logger.error(f"Error checking trend confirmation: {e}")
@@ -452,6 +463,12 @@ class IntelligentPositionManager:
                 exit_decision = self._check_exit_conditions(position, current_data)
                 
                 if exit_decision:
+                    # Calculate shares sold for partial exits (before executing exit)
+                    shares_sold = None
+                    if exit_decision['reason'] in [ExitReason.PARTIAL_PROFIT_1, ExitReason.PARTIAL_PROFIT_2]:
+                        sell_pct = exit_decision.get('sell_percentage', 0.5)
+                        shares_sold = position.shares * sell_pct
+                    
                     # Execute exit
                     if self._execute_exit(position, exit_decision):
                         # Format exit info for simulator
@@ -459,7 +476,9 @@ class IntelligentPositionManager:
                             'exited': True,
                             'position_id': ticker,
                             'exit_price': exit_decision['price'],
-                            'exit_reason': exit_decision['reason'].value if hasattr(exit_decision['reason'], 'value') else str(exit_decision['reason'])
+                            'exit_reason': exit_decision['reason'].value if hasattr(exit_decision['reason'], 'value') else str(exit_decision['reason']),
+                            'sell_percentage': exit_decision.get('sell_percentage'),  # For partial exits
+                            'shares_sold': shares_sold  # Actual shares sold (for partial exits)
                         }
                         exits.append(exit_info)
                         
@@ -571,46 +590,13 @@ class IntelligentPositionManager:
                 }
         
         # Check stop loss
-        # OPTIMIZED: For SURGE positions, add recovery and volume checks before exiting on stop loss
-        # No minimum hold time - allow exit if truly a pump and dump, but prevent premature exits
+        # FIX 2: Ensure surge positions get special treatment
         if position.current_stop_loss and position.current_price <= position.current_stop_loss:
             logger.info(f"[{position.ticker}] STOP LOSS triggered: ${position.current_price:.4f} <= ${position.current_stop_loss:.4f}")
-            # For SURGE positions, use more lenient stop loss logic with recovery checks
+            
+            # For SURGE positions, use enhanced recovery logic
             if position.position_type == PositionType.SURGE:
-                time_in_position = current_time - position.entry_time
-                minutes_since_entry = time_in_position.total_seconds() / 60
-                
-                # Check if price is recovering or volume is still strong
-                price_recovering = False
-                volume_still_strong = False
-                price_above_entry = position.current_price > position.entry_price
-                
-                # Check if price is recovering (using market data if available)
-                if 'price_change_pct' in market_data:
-                    # If recent price change is positive, price might be recovering
-                    if market_data.get('price_change_pct', 0) > 0:
-                        price_recovering = True
-                
-                # Check if volume is still strong
-                volume_ratio = market_data.get('volume_ratio', 1.0)
-                if volume_ratio > 1.5:  # Still 1.5x+ average volume
-                    volume_still_strong = True
-                
-                # Don't exit on stop loss if:
-                # - Price is still above entry AND (recovering OR volume still strong)
-                # This allows legitimate pump and dumps to exit, but prevents premature exits during normal fluctuations
-                if price_above_entry and (price_recovering or volume_still_strong):
-                    logger.info(f"[{position.ticker}] SURGE: Stop loss hit but continuing (above_entry={price_above_entry}, recovering={price_recovering}, vol_strong={volume_still_strong}, {minutes_since_entry:.1f} min)")
-                    # Don't exit yet - price is recovering or volume is still strong
-                else:
-                    # Exit if price is below entry OR (not recovering AND volume is weak)
-                    # This allows exit on true pump and dumps while preventing premature exits
-                    stop_type = "trailing" if position.trailing_stop_price else "initial"
-                    return {
-                        'reason': ExitReason.STOP_LOSS,
-                        'price': position.current_stop_loss,
-                        'message': f"{stop_type.title()} stop loss hit (SURGE: {minutes_since_entry:.1f} min, {position.unrealized_pnl_pct:.1f}% P&L)"
-                    }
+                return self._check_surge_exit_conditions(position, market_data, current_time)
             else:
                 # For non-SURGE positions, use standard stop loss logic
                 stop_type = "trailing" if position.trailing_stop_price else "initial"
@@ -621,9 +607,17 @@ class IntelligentPositionManager:
                 }
         
         # Check partial profit levels
+        # FIX 4: Apply dynamic adjustments and exit delays
+        self._adjust_exit_thresholds_by_momentum(position, market_data)
+        
         for profit_pct, sell_pct in position.exit_plan.partial_profit_levels:
             if profit_pct not in position.partial_profits_taken:
                 if position.unrealized_pnl_pct >= profit_pct:
+                    # Check if we should delay the exit
+                    if self._should_delay_exit(position, market_data, current_time):
+                        logger.info(f"[{position.ticker}] PARTIAL PROFIT DELAYED: {position.unrealized_pnl_pct:.2f}% >= {profit_pct}% (strong momentum)")
+                        continue
+                    
                     logger.info(f"[{position.ticker}] PARTIAL PROFIT triggered: {position.unrealized_pnl_pct:.2f}% >= {profit_pct}%")
                     return {
                         'reason': ExitReason.PARTIAL_PROFIT_1 if len(position.partial_profits_taken) == 0 else ExitReason.PARTIAL_PROFIT_2,
@@ -662,6 +656,99 @@ class IntelligentPositionManager:
                 }
         
         return None
+    
+    def _check_surge_exit_conditions(self, position: ActivePosition, market_data: Dict, current_time: datetime) -> Optional[Dict]:
+        """FIX 2: Enhanced surge-specific exit conditions with recovery checks"""
+        time_in_position = (current_time - position.entry_time).total_seconds() / 60
+        
+        # Dynamic stop loss for surge: 20% max loss or 10% after 30 minutes
+        if time_in_position >= 30:
+            # After 30 minutes, use 10% stop loss
+            if position.unrealized_pnl_pct <= -10.0:
+                # Check recovery signs before exiting
+                if not self._is_recovering(position, market_data):
+                    stop_type = "trailing" if position.trailing_stop_price else "initial"
+                    return {
+                        'reason': ExitReason.STOP_LOSS,
+                        'price': position.current_stop_loss,
+                        'message': f"{stop_type.title()} stop loss hit (SURGE: {time_in_position:.1f} min, {position.unrealized_pnl_pct:.1f}% P&L)"
+                    }
+        else:
+            # First 30 minutes, use 20% stop loss only (allow surge to develop)
+            if position.unrealized_pnl_pct <= -20.0:  # 20% maximum loss
+                # Check recovery signs before exiting
+                if not self._is_recovering(position, market_data):
+                    stop_type = "trailing" if position.trailing_stop_price else "initial"
+                    return {
+                        'reason': ExitReason.STOP_LOSS,
+                        'price': position.current_stop_loss,
+                        'message': f"{stop_type.title()} stop loss hit (SURGE: {time_in_position:.1f} min, {position.unrealized_pnl_pct:.1f}% P&L)"
+                    }
+        
+        # If recovering or within limits, don't exit yet
+        logger.info(f"[{position.ticker}] SURGE: Stop loss hit but continuing (recovering check passed, {time_in_position:.1f} min)")
+        return None
+    
+    def _is_recovering(self, position: ActivePosition, market_data: Dict) -> bool:
+        """FIX 3: Check if position shows signs of recovery"""
+        volume_ratio = market_data.get('volume_ratio', 1.0)
+        price_change = market_data.get('price_change_pct', 0)
+        price_above_entry = position.current_price > position.entry_price
+        
+        # Recovery if:
+        # 1. Price is still above entry AND volume is strong
+        # 2. Price is turning up (positive price change) AND volume is moderate
+        # 3. Volume is very strong (over 3x) indicating continued interest
+        
+        if price_above_entry and volume_ratio > 2.0:
+            return True
+        
+        if price_change > -1.0 and volume_ratio > 1.5:
+            return True
+        
+        if volume_ratio > 3.0:
+            return True
+        
+        return False
+    
+    def _adjust_exit_thresholds_by_momentum(self, position: ActivePosition, market_data: Dict) -> None:
+        """FIX 4: Adjust exit thresholds based on current momentum"""
+        momentum = market_data.get('momentum_5min', 0.0)
+        volume_ratio = market_data.get('volume_ratio', 1.0)
+        
+        # Only adjust for very strong momentum
+        if momentum > 25.0 or (momentum > 20.0 and volume_ratio > 5.0):
+            # Increase profit targets by 50% for extreme momentum
+            original_levels = list(position.exit_plan.partial_profit_levels)
+            adjusted_levels = []
+            
+            for profit_pct, sell_pct in original_levels:
+                # Increase profit threshold by 50%
+                adjusted_profit = profit_pct * 1.5
+                adjusted_levels.append((adjusted_profit, sell_pct))
+                logger.info(f"[{position.ticker}] DYNAMIC ADJUSTMENT: {profit_pct}% -> {adjusted_profit:.1f}% (momentum={momentum:.1f}%)")
+            
+            position.exit_plan.partial_profit_levels = adjusted_levels
+            position.exit_plan.final_target *= 1.5
+            
+            # Also increase stop loss tolerance for extreme moves
+            if position.position_type == PositionType.SURGE:
+                position.exit_plan.initial_stop_loss *= 1.5
+    
+    def _should_delay_exit(self, position: ActivePosition, market_data: Dict, current_time: datetime) -> bool:
+        """FIX 4: Delay exits for strong movers with high momentum"""
+        time_in_position = (current_time - position.entry_time).total_seconds() / 60
+        momentum = market_data.get('momentum_5min', 0.0)
+        volume_ratio = market_data.get('volume_ratio', 1.0)
+        
+        # Delay partial exits if:
+        # - Strong momentum (>20%) AND less than 3 minutes AND profit < 20%
+        # - Very strong volume (>5x) AND momentum > 15% AND less than 5 minutes
+        if ((momentum > 20.0 and time_in_position < 3.0 and position.unrealized_pnl_pct < 20.0) or
+            (volume_ratio > 5.0 and momentum > 15.0 and time_in_position < 5.0)):
+            logger.info(f"[{position.ticker}] EXIT DELAYED: momentum={momentum:.1f}%, vol={volume_ratio:.1f}x, time={time_in_position:.1f}min")
+            return True
+        return False
     
     def _detect_trend_reversal(self, position: ActivePosition, market_data: Dict, current_time: Optional[datetime] = None) -> bool:
         """Detect if trend is reversing with strategy-specific logic"""

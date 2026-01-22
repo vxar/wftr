@@ -19,6 +19,7 @@ import pytz
 from src.core.intelligent_position_manager import IntelligentPositionManager, PositionType, ExitReason
 from src.core.realtime_trader import RealtimeTrader
 from src.data.webull_data_api import WebullDataAPI
+from src.utils.trade_processing import process_exit_to_trade_data, process_entry_signal
 
 @dataclass
 class SimulationConfig:
@@ -299,7 +300,7 @@ class PureTradeSimulator:
                     'macd': row.get('macd'),
                     'macd_signal': row.get('macd_signal'),
                     'macd_hist': row.get('macd_hist', 0),
-                    'volume_ratio': row.get('volume_ratio', 1.0),
+                    'volume_ratio': self._calculate_volume_ratio(row, simulation_data, i),  # Add volume ratio
                     'volatility_score': 0.5,
                     'momentum_score': 0.6,
                     'trend_alignment': 0.7
@@ -323,22 +324,86 @@ class PureTradeSimulator:
         if len(self.position_manager.active_positions) > 0:
             last_timestamp = simulation_data.index[-1]
             last_row = simulation_data.iloc[-1]
-            last_market_data = {
-                'symbol': self.config.ticker,
-                'price': last_row['close'],
-                'timestamp': last_timestamp
-            }
             
             for pos_id in list(self.position_manager.active_positions.keys()):
                 success = self.position_manager.exit_position(pos_id, ExitReason.END_OF_DAY)
                 if success:
-                    position = self.position_manager.position_history[pos_id]
-                    trade_result = self._create_trade_result(position, last_market_data, last_timestamp)
-                    self.trades.append(trade_result)
-        
+                    # Create exit_info for end-of-day exit
+                    exit_info = {
+                        'position_id': pos_id,
+                        'exit_price': last_row['close'],
+                        'exit_reason': 'end_of_day',
+                        'exited': True
+                    }
+                    
+                    # Use shared trade processing function
+                    trade_data = process_exit_to_trade_data(
+                        exit_info,
+                        self.position_manager,
+                        last_timestamp
+                    )
+                    
+                    if trade_data:
+                        trade_result = self._create_trade_result_from_data(trade_data)
+                        self.trades.append(trade_result)
+
         # Calculate results
         return self.calculate_results()
-    
+
+    def _calculate_volume_ratio(self, current_row: pd.Series, df: pd.DataFrame, current_idx: int) -> float:
+        """Calculate volume ratio for current row"""
+        try:
+            # Get baseline volume from previous bars
+            lookback = min(20, current_idx)  # Use up to 20 bars for baseline
+            if current_idx >= lookback:
+                baseline_df = df.iloc[current_idx-lookback:current_idx]
+                baseline_volume = baseline_df['volume'].mean()
+                current_volume = current_row.get('volume', 0)
+                return current_volume / baseline_volume if baseline_volume > 0 else 1.0
+        except Exception:
+            return 1.0
+
+    def _calculate_sma(self, data: pd.DataFrame, current_idx: int, period: int) -> float:
+        """Calculate SMA for given period"""
+        if current_idx >= period:
+            return data.iloc[current_idx-period:current_idx]['close'].mean()
+        return data['close'].iloc[current_idx]  # Fallback to current price
+
+    def _calculate_multi_timeframe_analysis(self, row: pd.Series, df: pd.DataFrame, current_idx: int) -> Dict:
+        """Calculate multi-timeframe analysis for entry evaluation"""
+        try:
+            # Calculate SMAs for trend confirmation
+            sma_5 = self._calculate_sma(df, current_idx, 5)
+            sma_15 = self._calculate_sma(df, current_idx, 15)
+            sma_50 = self._calculate_sma(df, current_idx, 50)
+            
+            # Calculate momentum score (price change from previous)
+            momentum_score = 0.0
+            if current_idx > 0:
+                prev_price = df.iloc[current_idx-1]['close']
+                current_price = row['close']
+                momentum_score = ((current_price - prev_price) / prev_price) * 100 if prev_price > 0 else 0.0
+            
+            return {
+                'momentum_score': momentum_score,
+                'trend_alignment': 0.7 if (row['close'] > sma_5 and sma_5 > sma_15 and sma_15 > sma_50) else 0.5,
+                'sma_5': sma_5,
+                'sma_15': sma_15,
+                'sma_50': sma_50,
+                'rsi': row.get('rsi', 50),
+                'volatility_score': 0.3
+            }
+        except Exception:
+            return {
+                'momentum_score': 0.0,
+                'trend_alignment': 0.5,
+                'sma_5': row['close'],
+                'sma_15': row['close'],
+                'sma_50': row['close'],
+                'rsi': 50,
+                'volatility_score': 0.3
+            }
+
     def calculate_results(self) -> SimulationResult:
         """Calculate simulation statistics from captured trades"""
         if not self.trades:
@@ -512,33 +577,38 @@ class PureTradeSimulator:
                 current_price=market_data['price']
             )
             
-            # If entry signal detected, enter position
+            # If entry signal detected, use shared entry processing logic (same as realtime bot)
             if entry_signal:
-                # Determine position type based on pattern
-                position_type = PositionType.SWING  # Default
-                if 'SURGE' in entry_signal.pattern_name:
-                    position_type = PositionType.SURGE
-                elif 'SLOW' in entry_signal.pattern_name or 'ACCUMULATION' in entry_signal.pattern_name:
-                    position_type = PositionType.SLOW_MOVER
-                elif 'BREAKOUT' in entry_signal.pattern_name:
-                    position_type = PositionType.BREAKOUT
+                # Add volume ratio to entry signal if available
+                if 'volume_ratio' in market_data:
+                    if not hasattr(entry_signal, 'indicators'):
+                        entry_signal.indicators = {}
+                    entry_signal.indicators['volume_ratio'] = market_data['volume_ratio']
                 
-                # Calculate position size
-                quantity = int(self.config.initial_capital * 0.95 / entry_signal.price)
+                # Use shared entry processing function (same as bot)
+                entry_config = {
+                    'max_positions': self.config.max_positions,
+                    'position_size_pct': 0.95,  # Simulator uses 95% of capital (same as before, but now uses shared logic)
+                    'initial_capital': self.config.initial_capital,
+                    'min_capital': 100.0
+                }
                 
-                # Enter position using position manager (same as realtime bot)
-                success = self.position_manager.enter_position(
-                    ticker=self.config.ticker,
-                    entry_price=entry_signal.price,
-                    shares=quantity,
-                    position_type=position_type,
-                    entry_pattern=entry_signal.pattern_name,
-                    entry_confidence=entry_signal.confidence,
-                    multi_timeframe_confidence=entry_signal.confidence
+                entry_result = process_entry_signal(
+                    entry_signal,
+                    self.position_manager,
+                    entry_config,
+                    current_capital=self.config.initial_capital,  # Simulator uses initial capital (no capital tracking)
+                    timestamp=timestamp
                 )
                 
-                if success:
-                    self.logger.info(f"Entered {position_type.value} position at {entry_signal.price:.2f} on {timestamp.strftime('%H:%M:%S')} (Pattern: {entry_signal.pattern_name}, Confidence: {entry_signal.confidence*100:.1f}%)")
+                if entry_result and entry_result.get('success'):
+                    position_type = entry_result.get('position_type')
+                    position_type_str = position_type.value if hasattr(position_type, 'value') else str(position_type)
+                    self.logger.info(f"Entered {position_type_str} position at {entry_signal.price:.2f} on {timestamp.strftime('%H:%M:%S')} (Pattern: {entry_result['entry_pattern']}, Confidence: {entry_result['confidence']*100:.1f}%)")
+                elif entry_result:
+                    self.logger.info(f"Entry signal rejected: {entry_result.get('reason', 'Unknown reason')}")
+                else:
+                    self.logger.warning(f"Entry processing returned None")
             
         except Exception as e:
             self.logger.error(f"Error checking entry signals: {e}")
@@ -554,24 +624,23 @@ class PureTradeSimulator:
             # Let position manager handle ALL logic
             exits = self.position_manager.update_positions(market_data_for_pm)
             
-            # Process any exits
+            # Process any exits using shared trade processing logic
             for exit_info in exits:
                 if exit_info.get('exited'):
-                    pos_id = exit_info.get('position_id')
-                    exit_price = exit_info.get('exit_price', market_data['price'])
-                    exit_reason = exit_info.get('exit_reason', 'unknown')
+                    # Use shared trade processing function (same as bot)
+                    trade_data = process_exit_to_trade_data(
+                        exit_info,
+                        self.position_manager,
+                        timestamp
+                    )
                     
-                    # Get the completed position from history
-                    if pos_id in self.position_manager.position_history:
-                        position = self.position_manager.position_history[pos_id]
-                        # Create market data for trade result
-                        trade_market_data = {
-                            'price': exit_price,
-                            'timestamp': timestamp
-                        }
-                        trade_result = self._create_trade_result(position, trade_market_data, timestamp)
+                    if trade_data:
+                        # Convert to TradeResult format for simulator
+                        trade_result = self._create_trade_result_from_data(trade_data)
                         self.trades.append(trade_result)
-                        self.logger.info(f"Exited position at {exit_price:.2f} on {timestamp.strftime('%H:%M:%S')} - {exit_reason}")
+                        
+                        exit_type = "PARTIAL" if trade_data['is_partial_exit'] else "COMPLETE"
+                        self.logger.info(f"{exit_type} exit at {trade_data['exit_price']:.2f} on {timestamp.strftime('%H:%M:%S')} - {trade_data['exit_reason']}")
                 
         except Exception as e:
             self.logger.error(f"Error updating positions: {e}")
@@ -612,25 +681,29 @@ class PureTradeSimulator:
         
         return df
     
-    def _create_trade_result(self, position, market_data: Dict, timestamp: pd.Timestamp) -> TradeResult:
-        """Create trade result from position"""
+    def _create_trade_result_from_data(self, trade_data: Dict) -> TradeResult:
+        """Create TradeResult from standardized trade data (shared with bot)"""
         # Calculate commission based on configuration
-        commission = position.entry_price * position.original_shares * self.commission_per_trade
+        commission = trade_data['entry_price'] * trade_data['shares'] * self.commission_per_trade
         
-        # Calculate P&L percentage
-        pnl_pct = (position.realized_pnl / position.entry_value) * 100 if position.entry_value > 0 else 0
+        # Get position type from position manager
+        strategy = 'unknown'
+        if hasattr(self.position_manager, 'active_positions') and trade_data['ticker'] in self.position_manager.active_positions:
+            strategy = self.position_manager.active_positions[trade_data['ticker']].position_type.value
+        elif hasattr(self.position_manager, 'position_history') and trade_data['ticker'] in self.position_manager.position_history:
+            strategy = self.position_manager.position_history[trade_data['ticker']].position_type.value
         
         return TradeResult(
-            ticker=self.config.ticker,
-            entry_time=position.entry_time,
-            exit_time=timestamp,
-            entry_price=position.entry_price,
-            exit_price=market_data['price'],
-            quantity=position.original_shares,
-            strategy=position.position_type.value,
-            pnl=position.realized_pnl - commission,
-            pnl_pct=pnl_pct,
+            ticker=trade_data['ticker'],
+            entry_time=trade_data['entry_time'],
+            exit_time=trade_data['exit_time'],
+            entry_price=trade_data['entry_price'],
+            exit_price=trade_data['exit_price'],
+            quantity=int(trade_data['shares']),  # Use actual shares (partial or full)
+            strategy=strategy,
+            pnl=trade_data['pnl'] - commission,
+            pnl_pct=trade_data['pnl_pct'],
             commission=commission,
-            exit_reason=position.exit_reason.value if position.exit_reason else 'unknown',
-            hold_minutes=int((timestamp - position.entry_time).total_seconds() / 60)
+            exit_reason=trade_data['exit_reason'],
+            hold_minutes=int((trade_data['exit_time'] - trade_data['entry_time']).total_seconds() / 60)
         )

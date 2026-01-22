@@ -1,4 +1,4 @@
-﻿"""
+"""
 Autonomous Trading Bot - Clean Version
 Clean version without learning system and other complex features
 """
@@ -26,6 +26,7 @@ from .realtime_trader import RealtimeTrader
 from ..data.webull_data_api import WebullDataAPI
 from ..config.settings import settings
 from ..database.trading_database import TradingDatabase, PositionRecord, TradeRecord
+from ..utils.trade_processing import process_exit_to_trade_data, process_entry_signal
 
 logger = logging.getLogger(__name__)
 
@@ -400,68 +401,57 @@ class AutonomousTradingBot:
                 logger.info(f"  Stop Loss: ${entry_signal.stop_loss:.4f} ({((entry_signal.stop_loss/entry_signal.price - 1)*100):.1f}%)")
                 logger.info(f"  Reason: {entry_signal.reason}")
                 
-                # Check if we should enter (validate capital, positions, etc.)
-                position_summary = self.position_manager.get_position_summary()
-                if len(position_summary['active_positions']) >= self.config['max_positions']:
-                    logger.warning(f"[{ticker}] Max positions reached ({self.config['max_positions']}) - skipping entry")
-                elif self.current_capital < 100:
-                    logger.warning(f"[{ticker}] Insufficient capital (${self.current_capital:.2f}) - skipping entry")
+                # Use shared entry processing logic
+                entry_config = {
+                    'max_positions': self.config['max_positions'],
+                    'position_size_pct': self.config['position_size_pct'],
+                    'initial_capital': self.config['initial_capital'],
+                    'min_capital': 100.0
+                }
+                
+                # Add volume ratio to entry signal if available
+                if 'volume_ratio' in df.columns and len(df) > 0:
+                    if not hasattr(entry_signal, 'indicators'):
+                        entry_signal.indicators = {}
+                    entry_signal.indicators['volume_ratio'] = df['volume_ratio'].iloc[-1] if 'volume_ratio' in df.columns else 1.0
+                
+                entry_result = process_entry_signal(
+                    entry_signal,
+                    self.position_manager,
+                    entry_config,
+                    current_capital=self.current_capital,
+                    timestamp=datetime.now(self.et_timezone)
+                )
+                
+                if entry_result and entry_result.get('success'):
+                    shares = entry_result['shares']
+                    position_value = entry_result['position_value']
+                    
+                    logger.info(f"[{ticker}] POSITION ENTERED: {shares:.2f} shares @ ${entry_signal.price:.4f} (Value: ${position_value:.2f})")
+                    self.current_capital -= position_value
+                    
+                    # Save position to database
+                    try:
+                        position_record = PositionRecord(
+                            ticker=ticker,
+                            entry_time=entry_result['timestamp'],
+                            entry_price=entry_signal.price,
+                            shares=shares,
+                            entry_value=position_value,
+                            entry_pattern=entry_result['entry_pattern'],
+                            confidence=entry_result['confidence'],
+                            target_price=entry_result.get('target_price'),
+                            stop_loss=entry_result.get('stop_loss'),
+                            is_active=True
+                        )
+                        self.db.add_position(position_record)
+                        logger.debug(f"[{ticker}] Position saved to database")
+                    except Exception as e:
+                        logger.error(f"[{ticker}] Error saving position to database: {e}")
+                elif entry_result:
+                    logger.warning(f"[{ticker}] Entry rejected: {entry_result.get('reason', 'Unknown reason')}")
                 else:
-                    # Calculate position size
-                    position_value = self.current_capital * self.config['position_size_pct']
-                    shares = position_value / entry_signal.price
-                    
-                    # Determine position type based on pattern
-                    position_type = PositionType.SWING  # Default
-                    if 'SURGE' in entry_signal.pattern_name:
-                        position_type = PositionType.SURGE
-                    elif 'SLOW' in entry_signal.pattern_name or 'ACCUMULATION' in entry_signal.pattern_name:
-                        position_type = PositionType.SLOW_MOVER
-                    elif 'BREAKOUT' in entry_signal.pattern_name:
-                        position_type = PositionType.BREAKOUT
-                    
-                    # Enter position
-                    success = self.position_manager.enter_position(
-                        ticker=ticker,
-                        entry_price=entry_signal.price,
-                        shares=shares,
-                        position_type=position_type,
-                        entry_pattern=entry_signal.pattern_name,
-                        entry_confidence=entry_signal.confidence,
-                        multi_timeframe_confidence=entry_signal.confidence
-                    )
-                    
-                    if success:
-                        logger.info(f"[{ticker}] POSITION ENTERED: {shares:.2f} shares @ ${entry_signal.price:.4f} (Value: ${position_value:.2f})")
-                        self.current_capital -= position_value
-                        
-                        # Save position to database
-                        try:
-                            # Ensure confidence is between 0.0-1.0 (decimal format)
-                            confidence_value = entry_signal.confidence
-                            if confidence_value > 1.0:
-                                confidence_value = confidence_value / 100.0
-                            elif confidence_value < 0.0:
-                                confidence_value = 0.0
-                            
-                            position_record = PositionRecord(
-                                ticker=ticker,
-                                entry_time=datetime.now(self.et_timezone),
-                                entry_price=entry_signal.price,
-                                shares=shares,
-                                entry_value=position_value,
-                                entry_pattern=entry_signal.pattern_name,
-                                confidence=confidence_value,
-                                target_price=entry_signal.target_price,
-                                stop_loss=entry_signal.stop_loss,
-                                is_active=True
-                            )
-                            self.db.add_position(position_record)
-                            logger.debug(f"[{ticker}] Position saved to database")
-                        except Exception as e:
-                            logger.error(f"[{ticker}] Error saving position to database: {e}")
-                    else:
-                        logger.warning(f"[{ticker}] Failed to enter position")
+                    logger.warning(f"[{ticker}] Entry processing returned None")
             else:
                 # Log detailed rejection information
                 logger.info(f"[{ticker}] NO ENTRY SIGNAL DETECTED")
@@ -660,130 +650,48 @@ class AutonomousTradingBot:
             logger.error(f"Error updating positions: {e}")
     
     def _process_position_exit(self, exit_decision):
-        """Process a position exit"""
+        """Process a position exit using shared trade processing logic"""
         try:
-            # Exit decision format from position manager uses 'position_id' as ticker
-            ticker = exit_decision.get('position_id') or exit_decision.get('ticker')
-            if not ticker:
-                logger.error(f"Exit decision missing ticker/position_id: {exit_decision}")
+            # Use shared trade processing function
+            trade_data = process_exit_to_trade_data(
+                exit_decision,
+                self.position_manager,
+                datetime.now(self.et_timezone)
+            )
+            
+            if trade_data is None:
+                logger.error(f"Failed to process exit: {exit_decision}")
                 return
             
-            exit_price = exit_decision.get('exit_price') or exit_decision.get('price')
-            exit_reason = exit_decision.get('exit_reason')
-            
-            if exit_price is None:
-                logger.error(f"Exit decision missing price: {exit_decision}")
-                return
-            
-            # Get position details from position manager's internal state (most reliable)
-            entry_price = None
-            shares = None
-            entry_pattern = 'Unknown'
-            confidence = 0.0
-            entry_time = None
-            
-            # Try to get from position manager's internal state first
-            if hasattr(self.position_manager, 'active_positions') and ticker in self.position_manager.active_positions:
-                pos = self.position_manager.active_positions[ticker]
-                entry_price = pos.entry_price
-                shares = pos.original_shares  # Use original shares for completed trade
-                entry_pattern = getattr(pos, 'entry_pattern', 'Unknown')
-                confidence = getattr(pos, 'entry_confidence', 0.0)
-                entry_time = getattr(pos, 'entry_time', datetime.now(self.et_timezone))
-            else:
-                # Fallback: try to get from position summary
-                position_summary = self.position_manager.get_position_summary()
-                if ticker in position_summary['active_positions']:
-                    position_info = position_summary['active_positions'][ticker]
-                    entry_price = position_info['entry_price']
-                    shares = position_info['shares']
-                    # Try to get pattern and confidence from database
-                    try:
-                        db_positions = self.db.get_active_positions()
-                        for db_pos in db_positions:
-                            if db_pos.get('ticker') == ticker:
-                                entry_pattern = db_pos.get('entry_pattern', 'Unknown')
-                                confidence = db_pos.get('confidence', 0.0)
-                                entry_time_str = db_pos.get('entry_time')
-                                if entry_time_str:
-                                    try:
-                                        entry_time = pd.to_datetime(entry_time_str)
-                                        if entry_time.tzinfo is None:
-                                            entry_time = self.et_timezone.localize(entry_time)
-                                    except:
-                                        entry_time = datetime.now(self.et_timezone)
-                                else:
-                                    entry_time = datetime.now(self.et_timezone)
-                                break
-                    except:
-                        entry_time = datetime.now(self.et_timezone)
-                else:
-                    # Last resort: try database only
-                    try:
-                        db_positions = self.db.get_active_positions()
-                        for db_pos in db_positions:
-                            if db_pos.get('ticker') == ticker:
-                                entry_price = db_pos.get('entry_price', 0)
-                                shares = db_pos.get('shares', 0)
-                                entry_pattern = db_pos.get('entry_pattern', 'Unknown')
-                                confidence = db_pos.get('confidence', 0.0)
-                                entry_time_str = db_pos.get('entry_time')
-                                if entry_time_str:
-                                    try:
-                                        entry_time = pd.to_datetime(entry_time_str)
-                                        if entry_time.tzinfo is None:
-                                            entry_time = self.et_timezone.localize(entry_time)
-                                    except:
-                                        entry_time = datetime.now(self.et_timezone)
-                                else:
-                                    entry_time = datetime.now(self.et_timezone)
-                                break
-                    except:
-                        pass
-            
-            # Validate we have required data
-            if entry_price is None or shares is None or entry_price <= 0 or shares <= 0:
-                logger.error(f"[{ticker}] Cannot process exit - missing entry_price or shares (entry_price={entry_price}, shares={shares})")
-                return
-            
-            if entry_time is None:
-                entry_time = datetime.now(self.et_timezone)
-            
-            # Calculate P&L
-            entry_value = entry_price * shares
-            exit_value = exit_price * shares
-            pnl = exit_value - entry_value
-            pnl_pct = ((exit_price - entry_price) / entry_price * 100) if entry_price > 0 else 0
+            ticker = trade_data['ticker']
+            is_partial_exit = trade_data['is_partial_exit']
             
             # Save completed trade to database
             try:
-                    # Ensure confidence is between 0.0-1.0
-                    if confidence > 1.0:
-                        confidence = confidence / 100.0
-                    elif confidence < 0.0:
-                        confidence = 0.0
-                    
-                    trade_record = TradeRecord(
-                        ticker=ticker,
-                        entry_time=entry_time,
-                        exit_time=datetime.now(self.et_timezone),
-                        entry_price=entry_price,
-                        exit_price=exit_price,
-                        shares=shares,
-                        entry_value=entry_value,
-                        exit_value=exit_value,
-                        pnl_pct=pnl_pct,
-                        pnl_dollars=pnl,
-                        entry_pattern=entry_pattern,
-                        exit_reason=str(exit_reason) if not isinstance(exit_reason, str) else exit_reason,
-                        confidence=confidence
-                    )
-                    self.db.add_trade(trade_record)
-                    logger.debug(f"[{ticker}] Trade saved to database")
-                    
-                    # Close position in database (mark as inactive)
+                trade_record = TradeRecord(
+                    ticker=trade_data['ticker'],
+                    entry_time=trade_data['entry_time'],
+                    exit_time=trade_data['exit_time'],
+                    entry_price=trade_data['entry_price'],
+                    exit_price=trade_data['exit_price'],
+                    shares=trade_data['shares'],
+                    entry_value=trade_data['entry_value'],
+                    exit_value=trade_data['exit_value'],
+                    pnl_pct=trade_data['pnl_pct'],
+                    pnl_dollars=trade_data['pnl'],
+                    entry_pattern=trade_data['entry_pattern'],
+                    exit_reason=trade_data['exit_reason'],
+                    confidence=trade_data['confidence']
+                )
+                self.db.add_trade(trade_record)
+                logger.debug(f"[{ticker}] Trade saved to database")
+                
+                # Only close position in database if it's a complete exit (not partial)
+                if not is_partial_exit:
                     self.db.close_position(ticker)
-                    logger.debug(f"[{ticker}] Position closed in database")
+                    logger.debug(f"[{ticker}] Position closed in database (complete exit)")
+                else:
+                    logger.debug(f"[{ticker}] Position remains active (partial exit: {trade_data['shares']:.2f} shares sold)")
             except Exception as e:
                 logger.error(f"[{ticker}] Error saving trade to database: {e}")
                 import traceback
@@ -791,35 +699,35 @@ class AutonomousTradingBot:
             
             # Update performance metrics
             self.performance_metrics['total_trades'] += 1
-            if pnl > 0:
+            if trade_data['pnl'] > 0:
                 self.performance_metrics['winning_trades'] += 1
-                self.performance_metrics['total_pnl'] += pnl
+                self.performance_metrics['total_pnl'] += trade_data['pnl']
             else:
                 self.performance_metrics['losing_trades'] += 1
             
             # Return capital
-            self.current_capital += exit_value
+            self.current_capital += trade_data['exit_value']
             
             # Calculate hold time
-            exit_time = datetime.now(self.et_timezone)
-            hold_time = exit_time - entry_time
+            hold_time = trade_data['exit_time'] - trade_data['entry_time']
             hold_minutes = hold_time.total_seconds() / 60
             
             # Log detailed exit analysis
-            status = "WIN" if pnl > 0 else "LOSS"
+            status = "WIN" if trade_data['pnl'] > 0 else "LOSS"
+            exit_type = "PARTIAL" if is_partial_exit else "COMPLETE"
             logger.info(f"\n{'='*80}")
-            logger.info(f"{status} EXIT: {ticker} @ ${exit_price:.4f}")
-            logger.info(f"   Entry: ${entry_price:.4f} @ {entry_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"   Exit: ${exit_price:.4f} @ {exit_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"   Shares: {int(shares)}")
-            logger.info(f"   Entry Value: ${entry_value:,.2f}")
-            logger.info(f"   Exit Value: ${exit_value:,.2f}")
-            logger.info(f"   P&L: {pnl_pct:+.2f}% (${pnl:+,.2f})")
+            logger.info(f"{status} {exit_type} EXIT: {ticker} @ ${trade_data['exit_price']:.4f}")
+            logger.info(f"   Entry: ${trade_data['entry_price']:.4f} @ {trade_data['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"   Exit: ${trade_data['exit_price']:.4f} @ {trade_data['exit_time'].strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"   Shares: {int(trade_data['shares'])} {'(partial)' if is_partial_exit else '(full)'}")
+            logger.info(f"   Entry Value: ${trade_data['entry_value']:,.2f}")
+            logger.info(f"   Exit Value: ${trade_data['exit_value']:,.2f}")
+            logger.info(f"   P&L: {trade_data['pnl_pct']:+.2f}% (${trade_data['pnl']:+,.2f})")
             logger.info(f"   Hold Time: {hold_minutes:.1f} minutes ({hold_time})")
             logger.info(f"   Capital: ${self.current_capital:,.2f}")
-            logger.info(f"   Pattern: {entry_pattern}")
-            logger.info(f"   Confidence: {confidence:.2%}")
-            logger.info(f"   Exit Reason: {exit_reason}")
+            logger.info(f"   Pattern: {trade_data['entry_pattern']}")
+            logger.info(f"   Confidence: {trade_data['confidence']:.2%}")
+            logger.info(f"   Exit Reason: {trade_data['exit_reason']}")
             logger.info(f"{'='*80}\n")
             
         except Exception as e:
