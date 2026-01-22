@@ -148,7 +148,7 @@ class IntelligentPositionManager:
             ),
             PositionType.SURGE: ExitPlan(
                 position_type=PositionType.SURGE,
-                initial_stop_loss=6.0,  # Increased from 4.0% to 6.0% (key optimization)
+                initial_stop_loss=12.0,  # Increased from 6.0% to 12.0% to allow surge to develop (matches realtime_trader surge logic)
                 trailing_stop_enabled=True,
                 partial_profit_levels=[(4.0, 0.25), (8.0, 0.25), (15.0, 0.25)],  # 25% at 4%, 8%, 15%
                 final_target=25.0,
@@ -419,13 +419,30 @@ class IntelligentPositionManager:
             List of exit decisions with expected format for simulator
         """
         exits = []
+        active_count = len(self.active_positions)
+        
+        if active_count == 0:
+            logger.debug("No active positions to update")
+            return exits
+        
+        logger.info(f"Updating {active_count} active position(s) for exit conditions")
         
         for ticker, position in list(self.active_positions.items()):
             try:
+                # Use market_data if available, otherwise use position's current price
                 if ticker not in market_data:
-                    continue
+                    logger.warning(f"[{ticker}] No market data available - using position current price ${position.current_price:.4f} for exit check")
+                    # Create minimal market_data from position
+                    current_data = {
+                        'price': position.current_price,
+                        'volume_ratio': 1.0,
+                        'rsi': 50.0,
+                        'macd_hist': 0.0,
+                        'volatility_score': 0.0
+                    }
+                else:
+                    current_data = market_data[ticker]
                 
-                current_data = market_data[ticker]
                 current_price = current_data.get('price', position.current_price)
                 
                 # Update position
@@ -537,11 +554,16 @@ class IntelligentPositionManager:
     def _check_exit_conditions(self, position: ActivePosition, market_data: Dict) -> Optional[Dict]:
         """Check if position should be exited"""
         current_time = datetime.now(self.et_timezone)
+        time_in_position = current_time - position.entry_time
+        minutes_in_position = time_in_position.total_seconds() / 60
+        
+        stop_loss_str = f"${position.current_stop_loss:.4f}" if position.current_stop_loss else "None"
+        logger.info(f"[{position.ticker}] Checking exit conditions: P&L={position.unrealized_pnl_pct:.2f}%, Price=${position.current_price:.4f}, Stop={stop_loss_str}, Time={minutes_in_position:.1f}min")
         
         # Check time-based exit
         if position.exit_plan.max_hold_time:
-            time_in_position = current_time - position.entry_time
             if time_in_position > position.exit_plan.max_hold_time:
+                logger.info(f"[{position.ticker}] TIME EXIT triggered: {time_in_position} > {position.exit_plan.max_hold_time}")
                 return {
                     'reason': ExitReason.TIME_EXIT,
                     'price': position.current_price,
@@ -549,18 +571,60 @@ class IntelligentPositionManager:
                 }
         
         # Check stop loss
-        if position.current_price <= position.current_stop_loss:
-            stop_type = "trailing" if position.trailing_stop_price else "initial"
-            return {
-                'reason': ExitReason.STOP_LOSS,
-                'price': position.current_stop_loss,
-                'message': f"{stop_type.title()} stop loss hit"
-            }
+        # OPTIMIZED: For SURGE positions, add recovery and volume checks before exiting on stop loss
+        # No minimum hold time - allow exit if truly a pump and dump, but prevent premature exits
+        if position.current_stop_loss and position.current_price <= position.current_stop_loss:
+            logger.info(f"[{position.ticker}] STOP LOSS triggered: ${position.current_price:.4f} <= ${position.current_stop_loss:.4f}")
+            # For SURGE positions, use more lenient stop loss logic with recovery checks
+            if position.position_type == PositionType.SURGE:
+                time_in_position = current_time - position.entry_time
+                minutes_since_entry = time_in_position.total_seconds() / 60
+                
+                # Check if price is recovering or volume is still strong
+                price_recovering = False
+                volume_still_strong = False
+                price_above_entry = position.current_price > position.entry_price
+                
+                # Check if price is recovering (using market data if available)
+                if 'price_change_pct' in market_data:
+                    # If recent price change is positive, price might be recovering
+                    if market_data.get('price_change_pct', 0) > 0:
+                        price_recovering = True
+                
+                # Check if volume is still strong
+                volume_ratio = market_data.get('volume_ratio', 1.0)
+                if volume_ratio > 1.5:  # Still 1.5x+ average volume
+                    volume_still_strong = True
+                
+                # Don't exit on stop loss if:
+                # - Price is still above entry AND (recovering OR volume still strong)
+                # This allows legitimate pump and dumps to exit, but prevents premature exits during normal fluctuations
+                if price_above_entry and (price_recovering or volume_still_strong):
+                    logger.info(f"[{position.ticker}] SURGE: Stop loss hit but continuing (above_entry={price_above_entry}, recovering={price_recovering}, vol_strong={volume_still_strong}, {minutes_since_entry:.1f} min)")
+                    # Don't exit yet - price is recovering or volume is still strong
+                else:
+                    # Exit if price is below entry OR (not recovering AND volume is weak)
+                    # This allows exit on true pump and dumps while preventing premature exits
+                    stop_type = "trailing" if position.trailing_stop_price else "initial"
+                    return {
+                        'reason': ExitReason.STOP_LOSS,
+                        'price': position.current_stop_loss,
+                        'message': f"{stop_type.title()} stop loss hit (SURGE: {minutes_since_entry:.1f} min, {position.unrealized_pnl_pct:.1f}% P&L)"
+                    }
+            else:
+                # For non-SURGE positions, use standard stop loss logic
+                stop_type = "trailing" if position.trailing_stop_price else "initial"
+                return {
+                    'reason': ExitReason.STOP_LOSS,
+                    'price': position.current_stop_loss,
+                    'message': f"{stop_type.title()} stop loss hit"
+                }
         
         # Check partial profit levels
         for profit_pct, sell_pct in position.exit_plan.partial_profit_levels:
             if profit_pct not in position.partial_profits_taken:
                 if position.unrealized_pnl_pct >= profit_pct:
+                    logger.info(f"[{position.ticker}] PARTIAL PROFIT triggered: {position.unrealized_pnl_pct:.2f}% >= {profit_pct}%")
                     return {
                         'reason': ExitReason.PARTIAL_PROFIT_1 if len(position.partial_profits_taken) == 0 else ExitReason.PARTIAL_PROFIT_2,
                         'price': position.current_price,
@@ -570,7 +634,8 @@ class IntelligentPositionManager:
                     }
         
         # Check final target
-        if position.unrealized_pnl_pct >= position.exit_plan.final_target:
+        if position.exit_plan.final_target and position.unrealized_pnl_pct >= position.exit_plan.final_target:
+            logger.info(f"[{position.ticker}] PROFIT TARGET triggered: {position.unrealized_pnl_pct:.2f}% >= {position.exit_plan.final_target}%")
             return {
                 'reason': ExitReason.PROFIT_TARGET,
                 'price': position.current_price,
@@ -580,6 +645,7 @@ class IntelligentPositionManager:
         # Check trend reversal (for swing, surge, and breakout positions)
         if position.position_type in [PositionType.SWING, PositionType.SURGE, PositionType.BREAKOUT]:
             if self._detect_trend_reversal(position, market_data):
+                logger.info(f"[{position.ticker}] TREND REVERSAL triggered")
                 return {
                     'reason': ExitReason.TREND_REVERSAL,
                     'price': position.current_price,

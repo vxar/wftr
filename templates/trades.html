@@ -158,7 +158,7 @@
                     </div>
                     <div class="bg-gray-50 rounded-lg p-3">
                         <p class="text-xs text-gray-600">Shares</p>
-                        <p class="text-sm font-semibold text-gray-800">{{ trade.get('shares', 0) }}</p>
+                        <p class="text-sm font-semibold text-gray-800">{{ trade.get('shares', 0)|int }}</p>
                     </div>
                     <div class="bg-gray-50 rounded-lg p-3">
                         <p class="text-xs text-gray-600">Duration</p>
@@ -231,10 +231,24 @@
             filteredTrades.forEach(trade => tradesList.appendChild(trade));
         }
         
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            location.reload();
-        }, 30000);
+        // Auto-refresh every minute at :01 seconds
+        function scheduleNextRefresh() {
+            const now = new Date();
+            const nextMinute = new Date(now);
+            nextMinute.setMinutes(now.getMinutes() + 1);
+            nextMinute.setSeconds(1);
+            nextMinute.setMilliseconds(0);
+            
+            const delay = nextMinute - now;
+            
+            setTimeout(() => {
+                location.reload();
+                scheduleNextRefresh(); // Schedule the next refresh
+            }, delay);
+        }
+        
+        // Start the refresh schedule
+        scheduleNextRefresh();
     </script>
 </body>
 </html>

@@ -15,8 +15,9 @@ import logging
 from pathlib import Path
 import pytz
 
-# Import ONLY the position manager - this is where ALL trading logic lives
+# Import the position manager and RealtimeTrader - use same logic as realtime bot
 from src.core.intelligent_position_manager import IntelligentPositionManager, PositionType, ExitReason
+from src.core.realtime_trader import RealtimeTrader
 from src.data.webull_data_api import WebullDataAPI
 
 @dataclass
@@ -88,6 +89,16 @@ class PureTradeSimulator:
             max_positions=config.max_positions,
             position_size_pct=0.95,
             risk_per_trade=0.02
+        )
+        
+        # Initialize RealtimeTrader - use same entry logic as realtime bot
+        self.realtime_trader = RealtimeTrader(
+            min_confidence=0.72,
+            min_entry_price_increase=5.5,
+            trailing_stop_pct=2.5,
+            profit_target_pct=8.0,
+            data_api=self.webull_api,
+            rejection_callback=None  # No callback needed for simulator
         )
         
         # Store configuration parameters for use in trade calculations
@@ -173,20 +184,17 @@ class PureTradeSimulator:
             self.logger.info(f"Loading data from {data_file}")
             df = pd.read_csv(data_file, parse_dates=['timestamp'], index_col='timestamp')
             
-            # Check if data year matches detection time year
-            data_year = df.index[0].year
-            detection_year = detection_dt.year
-            if data_year != detection_year:
-                self.logger.warning(f"Data year mismatch: file contains {data_year} data but requesting {detection_year}")
-                self.logger.info(f"Adjusting detection time to use available data year {data_year}")
-                # Store the original detection time for reference
-                self.original_detection_time = detection_dt
-                # Create adjusted detection time with data year
-                adjusted_dt = detection_dt.replace(year=data_year)
-                self.adjusted_detection_time = adjusted_dt
-            else:
-                self.adjusted_detection_time = detection_dt
+            # Ensure timestamps are timezone-aware (US/Eastern) if they're not already
+            if df.index.tz is None:
+                # Assume loaded timestamps are in US/Eastern
+                eastern = pytz.timezone('US/Eastern')
+                df.index = df.index.tz_localize(eastern)
+            elif str(df.index.tz) != 'US/Eastern':
+                # Convert to US/Eastern if different timezone
+                df.index = df.index.tz_convert('US/Eastern')
             
+            # Don't adjust detection time - use it as provided
+            # We'll find the closest match in the data during simulation
             return df
         else:
             return self.download_data()
@@ -201,45 +209,78 @@ class PureTradeSimulator:
         
         # Load historical data
         full_data = self.load_data()
+        
+        # Ensure timestamps are timezone-aware (US/Eastern)
+        if full_data.index.tz is None:
+            # If no timezone, assume US/Eastern (like realtime bot)
+            eastern = pytz.timezone('US/Eastern')
+            full_data.index = full_data.index.tz_localize(eastern)
+        elif str(full_data.index.tz) != 'US/Eastern':
+            # Convert to US/Eastern if different timezone
+            full_data.index = full_data.index.tz_convert('US/Eastern')
+        
         self.historical_data = full_data
         
-        # Get detection time and find the corresponding data point
+        # Get detection time (already in ET from _parse_detection_time)
         detection_dt = self._parse_detection_time()
         self.detection_time = detection_dt  # Store for use in entry signals
         
-        # Use adjusted detection time if available (for year mismatches)
-        actual_detection_dt = getattr(self, 'adjusted_detection_time', detection_dt)
-        if hasattr(self, 'original_detection_time'):
-            self.logger.info(f"Original detection time: {self.original_detection_time}")
-            self.logger.info(f"Using adjusted detection time: {actual_detection_dt}")
+        # Ensure detection time is in same timezone as data (should already be ET)
+        data_tz = full_data.index.tz
+        if data_tz is not None:
+            if detection_dt.tzinfo is None:
+                detection_dt = data_tz.localize(detection_dt.replace(tzinfo=None))
+            elif detection_dt.tzinfo != data_tz:
+                detection_dt = detection_dt.astimezone(data_tz)
+            # Update stored detection time
+            self.detection_time = detection_dt
         
-        # Find the closest available time to detection time
+        # Find the closest available time to detection time in the data
+        # Use the detection time as provided, find closest match
         try:
-            detection_idx = full_data.index.get_loc(actual_detection_dt)
+            detection_idx = full_data.index.get_loc(detection_dt)
+            actual_detection_dt = detection_dt  # Exact match found
             self.logger.info(f"Found exact match for detection time at index {detection_idx}")
         except KeyError:
-            available_times = full_data.index[full_data.index >= actual_detection_dt]
+            # Find closest available time at or after detection time
+            available_times = full_data.index[full_data.index >= detection_dt]
             if len(available_times) == 0:
-                raise ValueError(f"No data available at or after detection time {actual_detection_dt}")
+                # Try to find closest time before detection time if no data after
+                available_times = full_data.index[full_data.index <= detection_dt]
+                if len(available_times) == 0:
+                    raise ValueError(f"No data available near detection time {detection_dt}")
+                else:
+                    detection_idx = full_data.index.get_loc(available_times[-1])
+                    actual_detection_dt = available_times[-1]
+                    self.logger.warning(f"No data at or after detection time, using closest before: {actual_detection_dt} at index {detection_idx}")
             else:
                 detection_idx = full_data.index.get_loc(available_times[0])
-                self.logger.info(f"Using closest available time: {available_times[0]} at index {detection_idx}")
+                actual_detection_dt = available_times[0]
+                self.logger.info(f"Using closest available time after detection: {actual_detection_dt} at index {detection_idx} (requested: {detection_dt})")
         
-        # Get data from detection time onwards
+        # Store actual detection time used (for entry signal checks)
+        self.actual_detection_dt = actual_detection_dt
+        
+        # Split data: historical (before detection) and simulation (from detection onwards)
+        # Historical data is used for analysis (like realtime bot would have accumulated)
+        historical_data_before_detection = full_data.iloc[:detection_idx].copy()
         simulation_data = full_data.iloc[detection_idx:].copy()
         
         self.logger.info(f"Detection time requested: {detection_dt}")
-        self.logger.info(f"Actual detection time used: {actual_detection_dt}")
+        self.logger.info(f"Actual detection time used (closest match in data): {actual_detection_dt}")
         self.logger.info(f"Full data range: {full_data.index.min()} to {full_data.index.max()}")
-        self.logger.info(f"Simulation data range: {simulation_data.index.min()} to {simulation_data.index.max()}")
+        self.logger.info(f"Historical data (before detection): {len(historical_data_before_detection)} bars, range: {historical_data_before_detection.index.min() if len(historical_data_before_detection) > 0 else 'N/A'} to {historical_data_before_detection.index.max() if len(historical_data_before_detection) > 0 else 'N/A'}")
+        self.logger.info(f"Simulation data (from detection): {len(simulation_data)} bars, range: {simulation_data.index.min()} to {simulation_data.index.max()}")
         
         if len(simulation_data) == 0:
             raise ValueError(f"No data available for simulation period after {detection_dt}")
         
-        self.logger.info(f"Feeding {len(simulation_data)} minutes of data to position manager")
-        self.logger.info(f"Data range: {simulation_data.index.min()} to {simulation_data.index.max()}")
+        # Store historical data for use in entry signal analysis
+        self.historical_data_before_detection = historical_data_before_detection
         
-        # Feed minute-by-minute data to the position manager
+        self.logger.info(f"Starting simulation from detection time - will process {len(simulation_data)} minutes minute-by-minute")
+        
+        # Feed minute-by-minute data to the position manager (starting from detection time)
         for i, (timestamp, row) in enumerate(simulation_data.iterrows()):
             try:
                 # Set current data index
@@ -354,108 +395,155 @@ class PureTradeSimulator:
         )
     
     def _check_entry_signals(self, market_data: Dict, timestamp: pd.Timestamp, row: pd.Series):
-        """Check for entry signals using position manager logic"""
+        """Check for entry signals using RealtimeTrader (same logic as realtime bot)"""
         try:
             # For indicator calculation, use historical data BEFORE detection time (like realtime)
             # But only check for entry AFTER detection time
-            actual_detection_dt = getattr(self, 'adjusted_detection_time', self.detection_time)
+            actual_detection_dt = getattr(self, 'actual_detection_dt', self.detection_time)
             if timestamp < actual_detection_dt:
                 return  # Don't enter before detection time
             
-            # Use all available historical data for indicators (like realtime bot would)
-            historical_slice = self.historical_data.loc[:timestamp]
+            # Build the data for analysis: historical data BEFORE detection + data up to current timestamp
+            # This mimics how realtime bot would have historical data accumulated before detection time
+            historical_before = getattr(self, 'historical_data_before_detection', pd.DataFrame())
             
-            if len(historical_slice) < 50:  # Need enough data for indicators
+            # Ensure timezone consistency before slicing
+            # Both timestamps must be in the same timezone as the historical_data index
+            historical_tz = self.historical_data.index.tz
+            
+            # Normalize actual_detection_dt to match historical_data timezone
+            if historical_tz is not None:
+                if actual_detection_dt.tzinfo is None:
+                    actual_detection_dt = historical_tz.localize(actual_detection_dt.replace(tzinfo=None))
+                else:
+                    # Convert to historical timezone
+                    actual_detection_dt = actual_detection_dt.astimezone(historical_tz)
+            elif actual_detection_dt.tzinfo is not None:
+                # Historical data has no timezone, but detection time does - remove timezone
+                actual_detection_dt = actual_detection_dt.replace(tzinfo=None)
+            
+            # Normalize timestamp to match historical_data timezone
+            # Timestamp comes from simulation_data index, which should already match, but normalize to be safe
+            if historical_tz is not None:
+                if timestamp.tzinfo is None:
+                    timestamp = historical_tz.localize(timestamp.replace(tzinfo=None))
+                else:
+                    # Convert to historical timezone
+                    timestamp = timestamp.astimezone(historical_tz)
+            elif timestamp.tzinfo is not None:
+                # Historical data has no timezone, but timestamp does - remove timezone
+                timestamp = timestamp.replace(tzinfo=None)
+            
+            # Get data from detection time up to current timestamp (inclusive)
+            # Use try/except to handle any remaining timezone issues gracefully
+            try:
+                data_from_detection = self.historical_data.loc[actual_detection_dt:timestamp].copy()
+            except ValueError as e:
+                if "UTC offset" in str(e):
+                    # Last resort: convert both to naive timestamps if timezone mismatch persists
+                    self.logger.warning(f"Timezone mismatch in slice, converting to naive: {e}")
+                    actual_detection_dt_naive = actual_detection_dt.replace(tzinfo=None) if actual_detection_dt.tzinfo else actual_detection_dt
+                    timestamp_naive = timestamp.replace(tzinfo=None) if timestamp.tzinfo else timestamp
+                    historical_data_naive = self.historical_data.copy()
+                    historical_data_naive.index = historical_data_naive.index.tz_localize(None) if historical_data_naive.index.tz else historical_data_naive.index
+                    data_from_detection = historical_data_naive.loc[actual_detection_dt_naive:timestamp_naive].copy()
+                else:
+                    raise
+            
+            # Combine: historical before detection + data from detection to current
+            if len(historical_before) > 0 and len(data_from_detection) > 0:
+                # Combine the two dataframes and remove any duplicates (in case detection time overlaps)
+                historical_slice = pd.concat([historical_before, data_from_detection])
+                # Remove duplicates based on index (timestamp)
+                historical_slice = historical_slice[~historical_slice.index.duplicated(keep='first')]
+                # Sort by timestamp to ensure correct order
+                historical_slice = historical_slice.sort_index()
+            elif len(historical_before) > 0:
+                # Only historical data (shouldn't happen, but handle it)
+                historical_slice = historical_before.copy()
+            elif len(data_from_detection) > 0:
+                # Only data from detection (no historical - should have at least some)
+                historical_slice = data_from_detection.copy()
+            else:
+                self.logger.warning(f"No data available for analysis at {timestamp}")
                 return
             
-            # Calculate indicators
-            indicators = self._calculate_indicators(historical_slice)
-            current_indicators = indicators.iloc[-1]
+            # Need at least 4 bars for surge detection, 50 for full pattern detection
+            if len(historical_slice) < 4:
+                self.logger.debug(f"Insufficient data for analysis at {timestamp}: {len(historical_slice)} bars (need at least 4)")
+                return
             
-            # Create multi-timeframe analysis
-            # Calculate momentum based on price change
-            price_change_5m = 0
-            if len(historical_slice) >= 5:
-                price_change_5m = (row['close'] - historical_slice.iloc[-5]['close']) / historical_slice.iloc[-5]['close']
+            # Log data composition for debugging (only at detection time to avoid spam)
+            if timestamp == actual_detection_dt:
+                self.logger.info(f"Data composition at detection time: {len(historical_before)} historical bars + {len(data_from_detection)} bars from detection = {len(historical_slice)} total bars")
             
-            momentum_score = min(1.0, max(0.0, 0.5 + price_change_5m * 10))  # Scale price change to 0-1
+            # Convert to DataFrame format expected by RealtimeTrader
+            # RealtimeTrader expects: timestamp, open, high, low, close, volume
+            # The historical_slice has timestamp as index, so reset it to make it a column
+            df_for_analysis = historical_slice.reset_index()
             
-            multi_timeframe_analysis = {
-                'trend_alignment': 0.7,  # Default
-                'momentum_score': momentum_score,
-                'volatility_score': current_indicators.get('rsi', 50) / 100,
-                'rsi': current_indicators.get('rsi', 50),
-                'sma_5': current_indicators.get('sma_5'),
-                'sma_15': current_indicators.get('sma_15'),
-                'sma_50': current_indicators.get('sma_50'),
-                'volume_ratio': current_indicators.get('volume_ratio', 1.0)
-            }
+            # Rename index column to 'timestamp' if it exists
+            if df_for_analysis.index.name == 'timestamp' or 'timestamp' not in df_for_analysis.columns:
+                # If timestamp is the index, it should already be in the columns after reset_index
+                # But check if we need to rename it
+                if df_for_analysis.index.name == 'timestamp':
+                    df_for_analysis = df_for_analysis.reset_index()
             
-            # Create volume data
-            volume_data = {
-                'volume_ratio': current_indicators.get('volume_ratio', 1.0)
-            }
+            # Ensure we have a timestamp column
+            if 'timestamp' not in df_for_analysis.columns:
+                # Use the index if timestamp column doesn't exist
+                df_for_analysis['timestamp'] = df_for_analysis.index
             
-            # Create pattern info based on actual market conditions
-            volume_ratio = current_indicators.get('volume_ratio', 1.0)
-            rsi = current_indicators.get('rsi', 50)
+            # Ensure timestamp is datetime
+            if not pd.api.types.is_datetime64_any_dtype(df_for_analysis['timestamp']):
+                df_for_analysis['timestamp'] = pd.to_datetime(df_for_analysis['timestamp'])
             
-            # Determine pattern based on volume and price action
-            if volume_ratio > 15:
-                pattern_name = 'surge'
-            elif volume_ratio > 5 and rsi > 60:
-                pattern_name = 'Volume_Breakout'
-            elif volume_ratio > 2:
-                pattern_name = 'Breakout'
-            elif volume_ratio < 3 and rsi < 40:
-                pattern_name = 'Slow_Accumulation'
-            else:
-                pattern_name = 'swing'  # Default
+            # Ensure we have required columns
+            required_cols = ['open', 'high', 'low', 'close', 'volume']
+            missing_cols = [col for col in required_cols if col not in df_for_analysis.columns]
+            if missing_cols:
+                self.logger.warning(f"Missing required columns: {missing_cols}")
+                return
             
-            pattern_info = {
-                'pattern_name': pattern_name
-            }
-            
-            # Calculate signal strength
-            signal_strength = 0.5
-            volume_ratio = current_indicators.get('volume_ratio', 1.0)
-            if volume_ratio > 8:  # Reduced from 10
-                signal_strength += 0.3
-            elif volume_ratio > 4:  # Reduced from 5
-                signal_strength += 0.2
-            elif volume_ratio > 2:
-                signal_strength += 0.1
-            
-            # Let position manager decide (ALL logic is here)
-            should_enter, position_type, reason = self.position_manager.evaluate_entry_signal(
-                self.config.ticker,
-                market_data['price'],
-                signal_strength,
-                multi_timeframe_analysis,
-                volume_data,
-                pattern_info
+            # Use RealtimeTrader to analyze (same logic as realtime bot)
+            entry_signal, exit_signals = self.realtime_trader.analyze_data(
+                df_for_analysis, 
+                self.config.ticker, 
+                current_price=market_data['price']
             )
             
-            if should_enter and position_type:
-                # Calculate position size
-                quantity = int(self.config.initial_capital * 0.95 / market_data['price'])
+            # If entry signal detected, enter position
+            if entry_signal:
+                # Determine position type based on pattern
+                position_type = PositionType.SWING  # Default
+                if 'SURGE' in entry_signal.pattern_name:
+                    position_type = PositionType.SURGE
+                elif 'SLOW' in entry_signal.pattern_name or 'ACCUMULATION' in entry_signal.pattern_name:
+                    position_type = PositionType.SLOW_MOVER
+                elif 'BREAKOUT' in entry_signal.pattern_name:
+                    position_type = PositionType.BREAKOUT
                 
-                # Enter position (position manager handles ALL logic)
+                # Calculate position size
+                quantity = int(self.config.initial_capital * 0.95 / entry_signal.price)
+                
+                # Enter position using position manager (same as realtime bot)
                 success = self.position_manager.enter_position(
                     ticker=self.config.ticker,
-                    entry_price=market_data['price'],
+                    entry_price=entry_signal.price,
                     shares=quantity,
                     position_type=position_type,
-                    entry_pattern=pattern_info['pattern_name'],
-                    entry_confidence=signal_strength,
-                    multi_timeframe_confidence=multi_timeframe_analysis['trend_alignment']
+                    entry_pattern=entry_signal.pattern_name,
+                    entry_confidence=entry_signal.confidence,
+                    multi_timeframe_confidence=entry_signal.confidence
                 )
                 
                 if success:
-                    self.logger.info(f"Entered {position_type.value} position at {market_data['price']:.2f} on {timestamp.strftime('%H:%M:%S')}")
+                    self.logger.info(f"Entered {position_type.value} position at {entry_signal.price:.2f} on {timestamp.strftime('%H:%M:%S')} (Pattern: {entry_signal.pattern_name}, Confidence: {entry_signal.confidence*100:.1f}%)")
             
         except Exception as e:
             self.logger.error(f"Error checking entry signals: {e}")
+            import traceback
+            self.logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _update_positions(self, market_data: Dict, timestamp: pd.Timestamp):
         """Update existing positions (position manager handles ALL logic)"""

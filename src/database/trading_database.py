@@ -73,6 +73,8 @@ class TradingDatabase:
             # Enable WAL mode for better concurrent access
             self.conn.execute("PRAGMA journal_mode=WAL")
             self.conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+            self.conn.execute("PRAGMA synchronous=NORMAL")  # Faster writes, still safe with WAL
+            self.conn.execute("PRAGMA wal_autocheckpoint=1000")  # Auto-checkpoint WAL file
             
             cursor = self.conn.cursor()
             
@@ -219,67 +221,108 @@ class TradingDatabase:
         Returns:
             Position ID
         """
-        try:
-            cursor = self.conn.cursor()
-            
-            # Check if position already exists
-            cursor.execute("SELECT id FROM positions WHERE ticker = ? AND is_active = 1", (position.ticker,))
-            existing = cursor.fetchone()
-            
-            if existing:
-                # Update existing position
-                cursor.execute("""
-                    UPDATE positions SET
-                        entry_time = ?,
-                        entry_price = ?,
-                        shares = ?,
-                        entry_value = ?,
-                        entry_pattern = ?,
-                        confidence = ?,
-                        target_price = ?,
-                        stop_loss = ?,
-                        updated_at = CURRENT_TIMESTAMP
-                    WHERE ticker = ? AND is_active = 1
-                """, (
-                    position.entry_time.isoformat() if isinstance(position.entry_time, datetime) else position.entry_time,
-                    position.entry_price,
-                    position.shares,
-                    position.entry_value,
-                    position.entry_pattern,
-                    position.confidence,
-                    position.target_price,
-                    position.stop_loss,
-                    position.ticker
-                ))
-                position_id = existing['id']
-            else:
-                # Insert new position
-                cursor.execute("""
-                    INSERT INTO positions (
-                        ticker, entry_time, entry_price, shares, entry_value,
-                        entry_pattern, confidence, target_price, stop_loss, is_active
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    position.ticker,
-                    position.entry_time.isoformat() if isinstance(position.entry_time, datetime) else position.entry_time,
-                    position.entry_price,
-                    position.shares,
-                    position.entry_value,
-                    position.entry_pattern,
-                    position.confidence,
-                    position.target_price,
-                    position.stop_loss,
-                    1 if position.is_active else 0
-                ))
-                position_id = cursor.lastrowid
-            
-            self.conn.commit()
-            logger.debug(f"Position saved to database: {position.ticker} (ID: {position_id})")
-            return position_id
-        except Exception as e:
-            logger.error(f"Error adding position to database: {e}")
-            self.conn.rollback()
-            raise
+        import time
+        max_retries = 5
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            try:
+                # Ensure connection is still valid
+                if self.conn is None:
+                    self._initialize_database()
+                
+                cursor = self.conn.cursor()
+                
+                try:
+                    # Begin explicit transaction
+                    cursor.execute("BEGIN IMMEDIATE")
+                    
+                    # Check if position already exists
+                    cursor.execute("SELECT id FROM positions WHERE ticker = ? AND is_active = 1", (position.ticker,))
+                    existing = cursor.fetchone()
+                    
+                    if existing:
+                        # Update existing position
+                        cursor.execute("""
+                            UPDATE positions SET
+                                entry_time = ?,
+                                entry_price = ?,
+                                shares = ?,
+                                entry_value = ?,
+                                entry_pattern = ?,
+                                confidence = ?,
+                                target_price = ?,
+                                stop_loss = ?,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE ticker = ? AND is_active = 1
+                        """, (
+                            position.entry_time.isoformat() if isinstance(position.entry_time, datetime) else position.entry_time,
+                            position.entry_price,
+                            position.shares,
+                            position.entry_value,
+                            position.entry_pattern,
+                            position.confidence,
+                            position.target_price,
+                            position.stop_loss,
+                            position.ticker
+                        ))
+                        position_id = existing['id']
+                    else:
+                        # Insert new position
+                        cursor.execute("""
+                            INSERT INTO positions (
+                                ticker, entry_time, entry_price, shares, entry_value,
+                                entry_pattern, confidence, target_price, stop_loss, is_active
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            position.ticker,
+                            position.entry_time.isoformat() if isinstance(position.entry_time, datetime) else position.entry_time,
+                            position.entry_price,
+                            position.shares,
+                            position.entry_value,
+                            position.entry_pattern,
+                            position.confidence,
+                            position.target_price,
+                            position.stop_loss,
+                            1 if position.is_active else 0
+                        ))
+                        position_id = cursor.lastrowid
+                    
+                    # Commit transaction
+                    self.conn.commit()
+                    logger.debug(f"Position saved to database: {position.ticker} (ID: {position_id})")
+                    return position_id
+                    
+                finally:
+                    # Always close cursor
+                    cursor.close()
+                    
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                    logger.warning(f"Database locked, retrying ({attempt + 1}/{max_retries})...")
+                    if self.conn:
+                        try:
+                            self.conn.rollback()
+                        except:
+                            pass
+                    time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+                    continue
+                else:
+                    logger.error(f"Error adding position to database: {e}")
+                    if self.conn:
+                        try:
+                            self.conn.rollback()
+                        except:
+                            pass
+                    raise
+            except Exception as e:
+                logger.error(f"Error adding position to database: {e}")
+                if self.conn:
+                    try:
+                        self.conn.rollback()
+                    except:
+                        pass
+                raise
     
     def update_position(self, ticker: str, target_price: Optional[float] = None, 
                        stop_loss: Optional[float] = None, shares: Optional[float] = None,
@@ -398,8 +441,9 @@ class TradingDatabase:
     
     def cleanup_orphaned_positions(self):
         """
-        Remove positions that have corresponding completed trades
-        This ensures positions table only contains truly active positions
+        Remove positions that have corresponding completed trades AND are fully closed
+        This ensures positions table only contains truly active positions.
+        Note: Positions with partial profits (remaining shares > 0) are kept active.
         """
         max_retries = 3
         retry_delay = 0.1  # Start with 100ms delay
@@ -407,17 +451,22 @@ class TradingDatabase:
         for attempt in range(max_retries):
             try:
                 cursor = self.conn.cursor()
-                # Find positions that have completed trades
+                # Find positions that have completed trades AND are fully closed
+                # IMPORTANT: Only delete if shares <= 0 to preserve positions with partial profits
+                # This excludes positions with partial profits that still have remaining shares > 0
                 cursor.execute("""
                     DELETE FROM positions
                     WHERE ticker IN (
                         SELECT DISTINCT ticker FROM trades
                     )
+                    AND (shares IS NULL OR shares <= 0 OR is_active = 0)
                 """)
                 deleted_count = cursor.rowcount
                 self.conn.commit()
                 if deleted_count > 0:
-                    logger.info(f"Cleaned up {deleted_count} orphaned position(s) (positions with completed trades)")
+                    logger.info(f"Cleaned up {deleted_count} orphaned position(s) (fully closed positions with completed trades)")
+                else:
+                    logger.debug("No orphaned positions to clean up (all positions with trades still have remaining shares)")
                 return deleted_count
             except sqlite3.OperationalError as e:
                 if "database is locked" in str(e).lower() and attempt < max_retries - 1:
@@ -436,6 +485,61 @@ class TradingDatabase:
                 return 0
         return 0
     
+    def cleanup_corrupted_positions(self):
+        """
+        Remove corrupted positions (where id or ticker is NULL/empty)
+        This should be called periodically, not on every read operation
+        """
+        max_retries = 3
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            try:
+                # Use BEGIN IMMEDIATE to get exclusive lock
+                cursor = self.conn.cursor()
+                cursor.execute("BEGIN IMMEDIATE")
+                
+                deleted = cursor.execute(
+                    "DELETE FROM positions WHERE (id IS NULL OR ticker IS NULL OR ticker = '') AND is_active = 1"
+                ).rowcount
+                
+                self.conn.commit()
+                cursor.close()
+                
+                if deleted > 0:
+                    logger.info(f"Cleaned up {deleted} corrupted position(s) from database")
+                return deleted
+                
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e).lower() and attempt < max_retries - 1:
+                    # Retry with exponential backoff
+                    import time
+                    if self.conn:
+                        try:
+                            self.conn.rollback()
+                        except:
+                            pass
+                    time.sleep(retry_delay * (2 ** attempt))
+                    logger.debug(f"Database locked, retrying cleanup_corrupted_positions (attempt {attempt + 1}/{max_retries})")
+                    continue
+                else:
+                    logger.warning(f"Error cleaning up corrupted positions: {e}")
+                    if self.conn:
+                        try:
+                            self.conn.rollback()
+                        except:
+                            pass
+                    return 0
+            except Exception as e:
+                logger.warning(f"Error cleaning up corrupted positions: {e}")
+                if self.conn:
+                    try:
+                        self.conn.rollback()
+                    except:
+                        pass
+                return 0
+        return 0
+    
     def get_all_trades(self, limit: Optional[int] = None) -> List[Dict]:
         """
         Get all completed trades
@@ -446,6 +550,7 @@ class TradingDatabase:
         Returns:
             List of trade dictionaries
         """
+        cursor = None
         try:
             cursor = self.conn.cursor()
             
@@ -561,34 +666,8 @@ class TradingDatabase:
                     # Fallback: use standard columns
                     select_columns = base_columns
             
-            # Clean up any corrupted positions (where id or ticker is NULL)
-            # This prevents them from being selected and causing warnings
-            max_retries = 3
-            retry_delay = 0.1
-            
-            for attempt in range(max_retries):
-                try:
-                    cleanup_cursor = self.conn.cursor()
-                    deleted = cleanup_cursor.execute(
-                        "DELETE FROM positions WHERE (id IS NULL OR ticker IS NULL OR ticker = '') AND is_active = 1"
-                    ).rowcount
-                    if deleted > 0:
-                        self.conn.commit()
-                        logger.info(f"Cleaned up {deleted} corrupted position(s) from database")
-                    break  # Success, exit retry loop
-                except sqlite3.OperationalError as e:
-                    if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                        # Retry with exponential backoff
-                        import time
-                        time.sleep(retry_delay * (2 ** attempt))
-                        logger.debug(f"Database locked, retrying cleanup_corrupted_positions (attempt {attempt + 1}/{max_retries})")
-                        continue
-                    else:
-                        logger.warning(f"Error cleaning up corrupted positions: {e}")
-                        break
-                except Exception as e:
-                    logger.warning(f"Error cleaning up corrupted positions: {e}")
-                    break
+            # Note: Cleanup of corrupted positions is done separately via cleanup_corrupted_positions()
+            # to avoid write locks during read operations. The query below filters them out anyway.
             
             # Filter out null/empty tickers at SQL level
             # Also filter out rows where id is NULL (corrupted rows)
@@ -1174,10 +1253,26 @@ class TradingDatabase:
         except Exception as e:
             logger.error(f"Error clearing rejected entries for ticker {ticker}: {e}")
     
+    def checkpoint_wal(self):
+        """Checkpoint WAL file to reduce size and prevent locking issues"""
+        try:
+            if self.conn:
+                # Checkpoint the WAL file
+                self.conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                logger.debug("WAL checkpoint completed")
+        except Exception as e:
+            logger.warning(f"Error checkpointing WAL: {e}")
+    
     def close(self):
         """Close database connection"""
         if self.conn:
+            try:
+                # Checkpoint WAL before closing
+                self.checkpoint_wal()
+            except:
+                pass
             self.conn.close()
+            self.conn = None
             logger.info("Database connection closed")
     
     def __enter__(self):

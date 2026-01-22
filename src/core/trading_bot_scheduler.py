@@ -124,12 +124,16 @@ class TradingBotScheduler:
                                f"Weekday: {is_weekday}, In trading window: {is_in_window}")
                     self.bot.start()
                     self.bot_auto_started = True
+                    # Add small delay to prevent immediate re-check
+                    time.sleep(2)
                     
                 elif not should_run and self.bot.running:
                     logger.info(f"Stopping trading bot at {current_time.strftime('%H:%M:%S ET')} - "
                                f"Weekday: {is_weekday}, In trading window: {is_in_window}")
                     self.bot.stop()
                     self.bot_auto_started = False
+                    # Add small delay to prevent immediate re-check
+                    time.sleep(2)
                 
                 # Check for state transitions and log them
                 if self.bot_auto_started and not should_run:

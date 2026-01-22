@@ -28,7 +28,6 @@ class SimpleAutonomousBot:
         """
         self.et_timezone = pytz.timezone('America/New_York')
         self.running = False
-        self.paused = False
         
         # Default configuration
         base_config = {
@@ -68,7 +67,6 @@ class SimpleAutonomousBot:
                 return
             
             self.running = True
-            self.paused = False
             
             logger.info("Starting Simple Autonomous Trading Bot...")
             
@@ -88,26 +86,10 @@ class SimpleAutonomousBot:
         """Stop autonomous trading bot"""
         try:
             self.running = False
-            self.paused = False
             logger.info("Simple Autonomous Trading Bot stopped")
         except Exception as e:
             logger.error(f"Error stopping bot: {e}")
     
-    def pause_trading(self):
-        """Pause trading activities"""
-        try:
-            self.paused = True
-            logger.info("Trading paused")
-        except Exception as e:
-            logger.error(f"Error pausing trading: {e}")
-    
-    def resume_trading(self):
-        """Resume trading activities"""
-        try:
-            self.paused = False
-            logger.info("Trading resumed")
-        except Exception as e:
-            logger.error(f"Error resuming trading: {e}")
     
     def _start_dashboard(self):
         """Start the dashboard in a separate thread"""
@@ -136,9 +118,8 @@ class SimpleAutonomousBot:
         """Main trading loop"""
         try:
             while self.running:
-                if not self.paused:
-                    # Simulate trading cycle
-                    self._simulate_trading_cycle()
+                # Simulate trading cycle
+                self._simulate_trading_cycle()
                 
                 # Sleep until next cycle
                 time.sleep(self.config['scanner_update_interval'])
@@ -282,7 +263,6 @@ class SimpleAutonomousBot:
         try:
             return {
                 'running': self.running,
-                'paused': self.paused,
                 'config': self.config,
                 'performance_metrics': self.performance_metrics,
                 'active_positions': len(self.active_positions),

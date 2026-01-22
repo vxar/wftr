@@ -18,7 +18,6 @@ from simple_dashboard import app, set_bot_instance
 class MockBot:
     def __init__(self):
         self.running = False
-        self.trading_paused = False
         self.current_capital = 10000
         self.daily_profit = 0
         self.active_positions = {}
@@ -32,13 +31,6 @@ class MockBot:
         self.running = False
         print("Mock bot stopped")
     
-    def pause_trading(self):
-        self.trading_paused = True
-        print("Mock bot paused")
-    
-    def resume_trading(self):
-        self.trading_paused = False
-        print("Mock bot resumed")
 
 # Set mock bot instance
 mock_bot = MockBot()

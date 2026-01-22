@@ -142,7 +142,7 @@ def get_positions_data():
     for ticker, position in bot_instance.active_positions.items():
         pos_data = {
             'ticker': ticker,
-            'shares': getattr(position, 'shares', 0),
+            'shares': round(getattr(position, 'shares', 0)),  # Round to whole number
             'entry_price': getattr(position, 'entry_price', 0),
             'current_price': getattr(position, 'current_price', 0),
             'current_value': getattr(position, 'current_value', 0),
@@ -260,7 +260,7 @@ def get_trades_data():
                 'exit_time': getattr(trade, 'exit_time', datetime.now()).isoformat(),
                 'entry_price': getattr(trade, 'entry_price', 0),
                 'exit_price': getattr(trade, 'exit_price', 0),
-                'shares': getattr(trade, 'shares', 0),
+                'shares': round(getattr(trade, 'shares', 0)),  # Round to whole number
                 'pnl': getattr(trade, 'pnl_dollars', 0),
                 'pnl_pct': getattr(trade, 'pnl_pct', 0),
                 'entry_pattern': getattr(trade, 'entry_pattern', ''),

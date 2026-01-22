@@ -76,14 +76,10 @@ class VolatilityManager:
         
         # Current state
         self.current_condition = MarketCondition.NORMAL
-        self.trading_paused = False
-        self.pause_reason = None
-        self.pause_start_time = None
         
         # Tracking
         self.volatility_history = []
         self.market_events = []
-        self.pause_history = []
         
         # Economic calendar (simplified)
         self.economic_events = self._load_economic_calendar()
@@ -145,8 +141,6 @@ class VolatilityManager:
             condition = self._assess_market_condition(volatility_metrics)
             self.current_condition = condition
             
-            # Determine if trading should be paused
-            self._evaluate_trading_pause(condition, volatility_metrics)
             
             return condition
             
@@ -307,20 +301,12 @@ class VolatilityManager:
     def _handle_economic_event(self, event: MarketEvent):
         """Handle scheduled economic event"""
         logger.info(f"Economic event detected: {event.description}")
-        
-        if event.impact_level in ['high', 'critical']:
-            self.pause_trading(PauseReason.ECONOMIC_RELEASE, f"Economic event: {event.description}")
-        
         self.market_events.append(event)
     
     def _handle_news_events(self, events: List[MarketEvent]):
         """Handle major news events"""
         for event in events:
             logger.info(f"Major news event: {event.description}")
-            
-            if event.impact_level in ['high', 'critical']:
-                self.pause_trading(PauseReason.MAJOR_NEWS, f"Major news: {event.description}")
-        
         self.market_events.extend(events)
     
     def _assess_market_condition(self, metrics: VolatilityMetrics) -> MarketCondition:
@@ -345,59 +331,6 @@ class VolatilityManager:
             logger.error(f"Error assessing market condition: {e}")
             return MarketCondition.NORMAL
     
-    def _evaluate_trading_pause(self, condition: MarketCondition, metrics: VolatilityMetrics):
-        """Evaluate if trading should be paused"""
-        try:
-            # Don't pause if already paused for same reason
-            if self.trading_paused:
-                return
-            
-            # Check conditions for pause
-            if condition == MarketCondition.EXTREME:
-                self.pause_trading(PauseReason.HIGH_VOLATILITY, "Extreme market volatility detected")
-            elif condition == MarketCondition.VOLATILE:
-                # Additional checks for volatile conditions
-                if metrics.momentum_shift > 5.0:  # Large momentum shift
-                    self.pause_trading(PauseReason.MARKET_STRESS, "High momentum shift detected")
-                elif metrics.volume_spike > 5.0:  # Extreme volume spike
-                    self.pause_trading(PauseReason.MARKET_STRESS, "Extreme volume spike detected")
-            
-        except Exception as e:
-            logger.error(f"Error evaluating trading pause: {e}")
-    
-    def pause_trading(self, reason: PauseReason, description: str = ""):
-        """Pause trading activity"""
-        if not self.trading_paused:
-            self.trading_paused = True
-            self.pause_reason = reason
-            self.pause_start_time = datetime.now(self.et_timezone)
-            
-            logger.warning(f"Trading PAUSED: {reason.value} - {description}")
-            
-            # Record pause
-            self.pause_history.append({
-                'reason': reason,
-                'description': description,
-                'start_time': self.pause_start_time,
-                'end_time': None,
-                'duration': None
-            })
-    
-    def resume_trading(self, reason: str = ""):
-        """Resume trading activity"""
-        if self.trading_paused:
-            self.trading_paused = False
-            pause_end_time = datetime.now(self.et_timezone)
-            
-            # Update pause history
-            if self.pause_history and self.pause_history[-1]['end_time'] is None:
-                self.pause_history[-1]['end_time'] = pause_end_time
-                self.pause_history[-1]['duration'] = pause_end_time - self.pause_history[-1]['start_time']
-            
-            logger.info(f"Trading RESUMED: {reason}")
-            
-            self.pause_reason = None
-            self.pause_start_time = None
     
     def should_trade(self) -> Tuple[bool, str]:
         """
@@ -406,12 +339,6 @@ class VolatilityManager:
         Returns:
             Tuple of (should_trade, reason)
         """
-        if self.trading_paused:
-            return False, f"Trading paused: {self.pause_reason.value if self.pause_reason else 'Unknown'}"
-        
-        if self.current_condition == MarketCondition.EXTREME:
-            return False, "Extreme market conditions"
-        
         if self.current_condition == MarketCondition.CLOSED:
             return False, "Market closed"
         
@@ -424,9 +351,6 @@ class VolatilityManager:
             
             summary = {
                 'current_condition': self.current_condition.value,
-                'trading_paused': self.trading_paused,
-                'pause_reason': self.pause_reason.value if self.pause_reason else None,
-                'pause_duration': str(datetime.now(self.et_timezone) - self.pause_start_time) if self.pause_start_time and self.trading_paused else None,
                 'volatility_metrics': {
                     'vix_level': latest_metrics.vix_level if latest_metrics else 0,
                     'market_volatility': latest_metrics.market_volatility if latest_metrics else 0,
@@ -442,9 +366,7 @@ class VolatilityManager:
                         'time': event.timestamp.strftime('%H:%M:%S')
                     }
                     for event in self.market_events[-5:]  # Last 5 events
-                ],
-                'pause_history_count': len(self.pause_history),
-                'total_pause_time': self._calculate_total_pause_time()
+                ]
             }
             
             return summary
@@ -452,69 +374,6 @@ class VolatilityManager:
         except Exception as e:
             logger.error(f"Error getting market summary: {e}")
             return {}
-    
-    def _calculate_total_pause_time(self) -> timedelta:
-        """Calculate total time trading has been paused today"""
-        today = datetime.now(self.et_timezone).date()
-        total_pause_time = timedelta(0)
-        
-        for pause in self.pause_history:
-            if pause['start_time'].date() == today:
-                if pause['duration']:
-                    total_pause_time += pause['duration']
-                elif pause['end_time'] is None:  # Currently paused
-                    total_pause_time += datetime.now(self.et_timezone) - pause['start_time']
-        
-        return total_pause_time
-    
-    def auto_resume_check(self) -> bool:
-        """
-        Check if trading should be automatically resumed
-        
-        Returns:
-            True if trading was resumed
-        """
-        if not self.trading_paused:
-            return False
-        
-        try:
-            # Auto-resume conditions
-            current_time = datetime.now(self.et_timezone)
-            pause_duration = current_time - self.pause_start_time
-            
-            # Check if pause reason has expired
-            if self.pause_reason == PauseReason.ECONOMIC_RELEASE:
-                if pause_duration > timedelta(minutes=45):  # Resume after 45 minutes
-                    self.resume_trading("Economic event window passed")
-                    return True
-            
-            elif self.pause_reason == PauseReason.MAJOR_NEWS:
-                if pause_duration > timedelta(minutes=30):  # Resume after 30 minutes
-                    self.resume_trading("News event window passed")
-                    return True
-            
-            elif self.pause_reason == PauseReason.HIGH_VOLATILITY:
-                # Check if volatility has subsided
-                if len(self.volatility_history) >= 2:
-                    latest = self.volatility_history[-1]
-                    previous = self.volatility_history[-2]
-                    
-                    # If volatility decreased significantly
-                    if (latest.vix_level < previous.vix_level * 0.8 and
-                        latest.market_volatility < previous.market_volatility * 0.8):
-                        self.resume_trading("Volatility has subsided")
-                        return True
-            
-            # Default auto-resume after 2 hours
-            if pause_duration > timedelta(hours=2):
-                self.resume_trading("Maximum pause duration reached")
-                return True
-            
-            return False
-            
-        except Exception as e:
-            logger.error(f"Error in auto-resume check: {e}")
-            return False
     
     def update_thresholds(self, new_thresholds: Dict):
         """Update volatility thresholds"""

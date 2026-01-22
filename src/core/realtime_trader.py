@@ -2606,8 +2606,8 @@ class RealtimeTrader:
                 if len(recent_highs) > 0 and len(recent_lows) > 0:
                     price_range_pct = ((max(recent_highs) - min(recent_lows)) / min(recent_lows)) * 100
                     # For normal stocks: 15% threshold
-                    # For stocks with volume ratio 2x-3x: 20% threshold (moderate volatility acceptable)
-                    volatility_threshold = 20.0 if volume_ratio >= 2.0 else 15.0
+                    # For stocks with volume ratio 2x+: 40% threshold (higher volatility acceptable for strong movers)
+                    volatility_threshold = 40.0 if volume_ratio >= 2.0 else 15.0
                     if price_range_pct > volatility_threshold:
                         reason = f"Too volatile ({price_range_pct:.1f}% range in 5 periods, threshold {volatility_threshold:.1f}%)"
                         if log_reasons:

@@ -519,7 +519,7 @@
                 <div id="botStatus" class="status-checking" title="Status: Checking..."></div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="autoRefresh" checked>
-                    <label for="autoRefresh">Auto-refresh (30s)</label>
+                    <label for="autoRefresh">Auto-refresh (1 min at :01)</label>
                 </div>
             </div>
         </div>
@@ -676,7 +676,7 @@
         
         async function loadPositions() {
             try {
-                const response = await fetch('/api/positions');
+                const response = await fetch('/api/positions?format=array');
                 const data = await response.json();
                 
                 if (data.error) {
@@ -731,7 +731,7 @@
         
         async function loadTrades() {
             try {
-                const response = await fetch('/api/trades');
+                const response = await fetch('/api/trades?format=array');
                 const data = await response.json();
                 
                 if (data.error) {
@@ -938,17 +938,27 @@
                 autoRefreshTimeout = null;
             }
             
-            // Schedule refresh every 30 seconds
+            // Schedule refresh every minute at :01 seconds
             function scheduleNextRefresh() {
                 // Load data immediately on first call
                 loadData();
                 updateBotStatusFromData();
                 
-                // Then set interval for every 30 seconds
-                autoRefreshInterval = setInterval(() => {
+                // Calculate delay until next minute at :01 seconds
+                const now = new Date();
+                const nextMinute = new Date(now);
+                nextMinute.setMinutes(now.getMinutes() + 1);
+                nextMinute.setSeconds(1);
+                nextMinute.setMilliseconds(0);
+                
+                const delay = nextMinute - now;
+                
+                // Set timeout for next refresh
+                autoRefreshTimeout = setTimeout(() => {
                     loadData();
                     updateBotStatusFromData();
-                }, 30000); // 30 seconds = 30000 milliseconds
+                    scheduleNextRefresh(); // Schedule the next refresh
+                }, delay);
             }
             
             scheduleNextRefresh();

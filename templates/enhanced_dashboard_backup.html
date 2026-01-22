@@ -200,7 +200,7 @@
                             <div class="grid grid-cols-2 gap-3 mb-4">
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="text-xs text-gray-600">Position Size</p>
-                                    <p class="text-sm font-semibold text-gray-800">{{ pos.get('shares', 0) }} shares</p>
+                                    <p class="text-sm font-semibold text-gray-800">{{ pos.get('shares', 0)|int }} shares</p>
                                 </div>
                                 <div class="bg-gray-50 rounded-lg p-3">
                                     <p class="text-xs text-gray-600">Current Value</p>
@@ -619,8 +619,23 @@
             refreshDailyAnalysis();
         });
 
-        // Auto-refresh every 5 seconds for real-time updates
-        setInterval(() => {
+        // Auto-refresh every minute at :01 seconds
+        function scheduleNextRefresh() {
+            const now = new Date();
+            const nextMinute = new Date(now);
+            nextMinute.setMinutes(now.getMinutes() + 1);
+            nextMinute.setSeconds(1);
+            nextMinute.setMilliseconds(0);
+            
+            const delay = nextMinute - now;
+            
+            setTimeout(() => {
+                refreshDashboard();
+                scheduleNextRefresh(); // Schedule the next refresh
+            }, delay);
+        }
+        
+        function refreshDashboard() {
             fetch('/api/status')
                 .then(response => response.json())
                 .then(data => {
@@ -637,7 +652,10 @@
                     updateMonitoredTickers(tickersData);
                 })
                 .catch(error => console.error('Error refreshing data:', error));
-        }, 5000);
+        }
+        
+        // Start the refresh schedule
+        scheduleNextRefresh();
         
         function updateMonitoredTickers(tickersData) {
             const tickerContainer = document.getElementById('monitored-tickers');

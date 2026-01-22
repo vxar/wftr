@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pytz
 from dataclasses import dataclass
 import logging
-from ..data.WebullUtil import fetch_top_gainers, get_rank_type
+from ..data.WebullUtil import fetch_top_gainers, get_rank_type, fetch_data_array, find_tickerid_for_symbol, get_stock_quote
 
 logger = logging.getLogger(__name__)
 
@@ -97,17 +97,49 @@ class EnhancedGainerScanner:
             simple_gainers = []
             for i, gainer in enumerate(gainers_list):
                 if isinstance(gainer, dict):
+                    # Debug: Log available fields for first few items
+                    if i < 3:
+                        logger.info(f"  Debug gainer {i+1} fields: {list(gainer.keys())}")
+                    
                     # Get symbol with multiple possible field names
-                    symbol = (gainer.get('symbol') or 
-                             gainer.get('ticker') or 
-                             gainer.get('code') or 
-                             gainer.get('disSymbol') or f'TICKER_{i+1}')
+                    # Handle new API structure where symbol is nested in 'ticker' object
+                    if 'ticker' in gainer and isinstance(gainer['ticker'], dict):
+                        ticker_data = gainer['ticker']
+                        symbol = (ticker_data.get('symbol') or 
+                                 ticker_data.get('ticker') or 
+                                 ticker_data.get('code') or 
+                                 ticker_data.get('disSymbol') or f'TICKER_{i+1}')
+                    else:
+                        # Fallback to old structure
+                        symbol = (gainer.get('symbol') or 
+                                 gainer.get('ticker') or 
+                                 gainer.get('code') or 
+                                 gainer.get('disSymbol') or f'TICKER_{i+1}')
+                    
+                    # Ensure symbol is a string, not a dictionary
+                    if not isinstance(symbol, str):
+                        symbol = f'TICKER_{i+1}'
                     
                     # Get price with multiple possible field names
-                    price = (gainer.get('price') or 
-                             gainer.get('currentPrice') or 
-                             gainer.get('last') or 
-                             gainer.get('close') or 0)
+                    # Handle new API structure where price data might be in 'values' or 'ticker' object
+                    if 'values' in gainer and isinstance(gainer['values'], dict):
+                        values_data = gainer['values']
+                        price = (values_data.get('price') or 
+                                 values_data.get('currentPrice') or 
+                                 values_data.get('last') or 
+                                 values_data.get('close') or 0)
+                    elif 'ticker' in gainer and isinstance(gainer['ticker'], dict):
+                        ticker_data = gainer['ticker']
+                        price = (ticker_data.get('price') or 
+                                 ticker_data.get('currentPrice') or 
+                                 ticker_data.get('last') or 
+                                 ticker_data.get('close') or 0)
+                    else:
+                        # Fallback to old structure
+                        price = (gainer.get('price') or 
+                                 gainer.get('currentPrice') or 
+                                 gainer.get('last') or 
+                                 gainer.get('close') or 0)
                     
                     # Calculate change percentage
                     change_pct = self._calculate_change_pct(gainer, rank_type)
@@ -115,23 +147,56 @@ class EnhancedGainerScanner:
                     logger.info(f"  {i+1}. {symbol}: {price} ({change_pct:.2f}%)")
                     
                     # Create simple GainerData object
-                    simple_gainer = GainerData(
-                        symbol=symbol,
-                        price=float(price) if price else 0,
-                        change_pct=change_pct,
-                        volume=int(gainer.get('volume', 0)),
-                        avg_volume=int(gainer.get('avgVol10D', 0)),
-                        volume_ratio=1.0,
-                        market_cap=float(gainer.get('marketValue', 0)),
-                        sector=gainer.get('sector', ''),
-                        rank_type=rank_type,
-                        surge_score=0.5,
-                        manipulation_score=0.3,
-                        quality_score=0.7
-                    )
+                    # Extract data from new API structure
+                    if 'ticker' in gainer and isinstance(gainer['ticker'], dict):
+                        ticker_data = gainer['ticker']
+                        simple_gainer = GainerData(
+                            symbol=symbol,
+                            price=float(price) if price else 0,
+                            change_pct=change_pct,
+                            volume=int(ticker_data.get('volume', 0)),
+                            avg_volume=int(ticker_data.get('avgVol10D', 0)),
+                            volume_ratio=1.0,
+                            market_cap=float(ticker_data.get('marketValue', 0)),
+                            sector=ticker_data.get('sector', ''),
+                            rank_type=rank_type,
+                            surge_score=0.5,
+                            manipulation_score=0.3,
+                            quality_score=0.7
+                        )
+                    else:
+                        # Fallback to old structure
+                        simple_gainer = GainerData(
+                            symbol=symbol,
+                            price=float(price) if price else 0,
+                            change_pct=change_pct,
+                            volume=int(gainer.get('volume', 0)),
+                            avg_volume=int(gainer.get('avgVol10D', 0)),
+                            volume_ratio=1.0,
+                            market_cap=float(gainer.get('marketValue', 0)),
+                            sector=gainer.get('sector', ''),
+                            rank_type=rank_type,
+                            surge_score=0.5,
+                            manipulation_score=0.3,
+                            quality_score=0.7
+                        )
+                    
+                    # Basic filtering to skip problematic tickers
+                    if (simple_gainer.price < 0.01 or  # Too low price (likely delisted)
+                        simple_gainer.volume < 1000 or   # Very low volume
+                        not simple_gainer.symbol or     # No symbol
+                        len(simple_gainer.symbol) < 1 or  # Empty symbol
+                        simple_gainer.symbol.startswith('TICKER_')):  # Placeholder symbol
+                        logger.debug(f"Skipping problematic ticker: {simple_gainer.symbol} (price: ${simple_gainer.price}, volume: {simple_gainer.volume})")
+                        continue
+                    
                     simple_gainers.append(simple_gainer)
                 else:
-                    logger.info(f"  {i+1}. Non-dict data: {gainer}")
+                    # Safely log non-dict data without showing full content
+                    gainer_str = str(gainer)
+                    if len(gainer_str) > 100:
+                        gainer_str = gainer_str[:100] + "..."
+                    logger.info(f"  {i+1}. Non-dict data: {type(gainer).__name__} object")
             
             logger.info("=== END GAINER LIST ===")
             return simple_gainers
@@ -152,47 +217,246 @@ class EnhancedGainerScanner:
             Percentage change
         """
         try:
-            # Try multiple possible field names for current price
-            current_price = float((gainer.get('price') or 
-                                 gainer.get('currentPrice') or 
-                                 gainer.get('last') or 
-                                 gainer.get('close') or 0))
-            
-            if current_price == 0:
-                return 0.0
-            
-            if rank_type == 'preMarket':
-                # Pre-market: Change from previous close
-                prev_close = float((gainer.get('preClose') or 
-                                  gainer.get('previousClose') or 
-                                  gainer.get('prevClose') or 0))
-                if prev_close == 0:
-                    return 0.0
-                change_pct = ((current_price - prev_close) / prev_close) * 100
+            # Handle new API structure where data is in 'ticker' object
+            if 'ticker' in gainer and isinstance(gainer['ticker'], dict):
+                ticker_data = gainer['ticker']
+                # Try multiple possible field names for current price
+                # First check 'values' dict (new API structure)
+                current_price = 0.0
+                if 'values' in gainer and isinstance(gainer['values'], dict):
+                    values_data = gainer['values']
+                    current_price = float((values_data.get('price') or 
+                                         values_data.get('currentPrice') or 
+                                         values_data.get('last') or 
+                                         values_data.get('close') or 0))
                 
-            elif rank_type == 'afterMarket':
-                # After-hours: Change from regular close
-                # Use 'close' field for regular session close
-                regular_close = float((gainer.get('close') or 
-                                     gainer.get('regularClose') or 
-                                     gainer.get('dayClose') or 0))
-                if regular_close == 0:
-                    return 0.0
-                change_pct = ((current_price - regular_close) / regular_close) * 100
+                # Fallback to ticker_data
+                if current_price == 0:
+                    current_price = float((ticker_data.get('price') or 
+                                         ticker_data.get('currentPrice') or 
+                                         ticker_data.get('last') or 
+                                         ticker_data.get('close') or 0))
                 
-            else:  # '1d' - regular hours
-                # Regular hours: Change from previous close
-                prev_close = float((gainer.get('preClose') or 
-                                  gainer.get('previousClose') or 
-                                  gainer.get('prevClose') or 0))
-                if prev_close == 0:
+                if current_price == 0:
                     return 0.0
-                change_pct = ((current_price - prev_close) / prev_close) * 100
+                
+                if rank_type == 'preMarket':
+                    # Pre-market: Change from previous close
+                    prev_close = float((ticker_data.get('preClose') or 
+                                      ticker_data.get('previousClose') or 
+                                      ticker_data.get('prevClose') or 0))
+                    if prev_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - prev_close) / prev_close) * 100
+                    
+                elif rank_type == 'afterMarket':
+                    # After-hours: Change from today's regular close at 4:00 PM
+                    # First check if 'values' dict exists (new API structure)
+                    regular_close = 0.0
+                    if 'values' in gainer and isinstance(gainer['values'], dict):
+                        values_data = gainer['values']
+                        regular_close = float((values_data.get('close') or 
+                                             values_data.get('regularClose') or 
+                                             values_data.get('dayClose') or 0))
+                    
+                    # Also check ticker_data
+                    if regular_close == 0:
+                        regular_close = float((ticker_data.get('close') or 
+                                             ticker_data.get('regularClose') or 
+                                             ticker_data.get('dayClose') or 0))
+                    
+                    # If still not found, fetch from minute data
+                    if regular_close == 0:
+                        # Extract symbol from ticker_data
+                        symbol = (ticker_data.get('symbol') or 
+                                 ticker_data.get('ticker') or 
+                                 ticker_data.get('code') or 
+                                 ticker_data.get('disSymbol') or '')
+                        if symbol:
+                            regular_close = self._get_today_regular_close(symbol=symbol, current_price=current_price, gainer=gainer)
+                    
+                    if regular_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - regular_close) / regular_close) * 100
+                    
+                else:  # '1d' - regular hours
+                    # Regular hours: Change from previous close
+                    prev_close = float((ticker_data.get('preClose') or 
+                                      ticker_data.get('previousClose') or 
+                                      ticker_data.get('prevClose') or 0))
+                    if prev_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - prev_close) / prev_close) * 100
+            else:
+                # Fallback to old structure
+                # Try multiple possible field names for current price
+                # First check 'values' dict (new API structure)
+                current_price = 0.0
+                if 'values' in gainer and isinstance(gainer['values'], dict):
+                    values_data = gainer['values']
+                    current_price = float((values_data.get('price') or 
+                                         values_data.get('currentPrice') or 
+                                         values_data.get('last') or 
+                                         values_data.get('close') or 0))
+                
+                # Fallback to gainer directly
+                if current_price == 0:
+                    current_price = float((gainer.get('price') or 
+                                         gainer.get('currentPrice') or 
+                                         gainer.get('last') or 
+                                         gainer.get('close') or 0))
+                
+                if current_price == 0:
+                    return 0.0
+                
+                if rank_type == 'preMarket':
+                    # Pre-market: Change from previous close
+                    prev_close = float((gainer.get('preClose') or 
+                                      gainer.get('previousClose') or 
+                                      gainer.get('prevClose') or 0))
+                    if prev_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - prev_close) / prev_close) * 100
+                    
+                elif rank_type == 'afterMarket':
+                    # After-hours: Change from today's regular close at 4:00 PM
+                    # First check if 'values' dict exists (new API structure)
+                    regular_close = 0.0
+                    if 'values' in gainer and isinstance(gainer['values'], dict):
+                        values_data = gainer['values']
+                        regular_close = float((values_data.get('close') or 
+                                             values_data.get('regularClose') or 
+                                             values_data.get('dayClose') or 0))
+                    
+                    # Also check gainer directly
+                    if regular_close == 0:
+                        regular_close = float((gainer.get('close') or 
+                                             gainer.get('regularClose') or 
+                                             gainer.get('dayClose') or 0))
+                    
+                    # If still not found, fetch from minute data
+                    if regular_close == 0:
+                        # Extract symbol from gainer
+                        symbol = (gainer.get('symbol') or 
+                                 gainer.get('ticker') or 
+                                 gainer.get('code') or 
+                                 gainer.get('disSymbol') or '')
+                        if symbol:
+                            regular_close = self._get_today_regular_close(symbol=symbol, current_price=current_price, gainer=gainer)
+                    
+                    if regular_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - regular_close) / regular_close) * 100
+                    
+                else:  # '1d' - regular hours
+                    # Regular hours: Change from previous close
+                    prev_close = float((gainer.get('preClose') or 
+                                      gainer.get('previousClose') or 
+                                      gainer.get('prevClose') or 0))
+                    if prev_close == 0:
+                        return 0.0
+                    change_pct = ((current_price - prev_close) / prev_close) * 100
             
             return change_pct
             
         except Exception as e:
             logger.warning(f"Error calculating change pct: {e}")
+            return 0.0
+    
+    def _get_today_regular_close(self, symbol: Optional[str] = None, current_price: float = 0.0, gainer: Optional[Dict] = None) -> float:
+        """
+        Get today's regular session close (4:00 PM) from minute data
+        
+        Args:
+            symbol: Ticker symbol (if available)
+            current_price: Current price (for logging)
+            gainer: Gainer dict (to extract symbol if not provided)
+            
+        Returns:
+            Regular session close price, or 0.0 if not found
+        """
+        try:
+            # Extract symbol if not provided
+            if not symbol and gainer:
+                if 'ticker' in gainer and isinstance(gainer['ticker'], dict):
+                    ticker_data = gainer['ticker']
+                    symbol = (ticker_data.get('symbol') or 
+                             ticker_data.get('ticker') or 
+                             ticker_data.get('code') or 
+                             ticker_data.get('disSymbol') or '')
+                else:
+                    symbol = (gainer.get('symbol') or 
+                             gainer.get('ticker') or 
+                             gainer.get('code') or '')
+            
+            if not symbol:
+                return 0.0
+            
+            # First try quote API
+            try:
+                ticker_id = find_tickerid_for_symbol(symbol)
+                if ticker_id:
+                    quote = get_stock_quote(ticker_id)
+                    if quote:
+                        quote_close = (quote.get('close') or 
+                                     quote.get('regularClose') or 
+                                     quote.get('dayClose') or 0)
+                        if quote_close:
+                            try:
+                                return float(quote_close)
+                            except (ValueError, TypeError):
+                                pass
+            except Exception as e:
+                logger.debug(f"Could not get quote for {symbol}: {e}")
+            
+            # If quote API doesn't have it, fetch from minute data
+            try:
+                ticker_id = find_tickerid_for_symbol(symbol)
+                if ticker_id:
+                    # Fetch today's minute data
+                    df = fetch_data_array(ticker_id=ticker_id, symbol=symbol, timeframe='m1', count=500)
+                    if df is not None and not df.empty:
+                        # Filter for today's data
+                        et_tz = pytz.timezone('America/New_York')
+                        today = datetime.now(et_tz).date()
+                        
+                        # Reset index if timestamp is the index
+                        if df.index.name == 'timestamp' or isinstance(df.index, pd.DatetimeIndex):
+                            df = df.reset_index()
+                        
+                        # Ensure timestamp column exists and is datetime
+                        if 'timestamp' in df.columns:
+                            if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+                                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                            
+                            # Filter for today's data
+                            df['date'] = df['timestamp'].dt.date
+                            today_df = df[df['date'] == today]
+                            
+                            if not today_df.empty:
+                                # Find the last bar at or before 4:00 PM (16:00)
+                                # Get bars at or before 4:00 PM (regular session ends at 4:00 PM)
+                                regular_hours_df = today_df[today_df['timestamp'].dt.hour < 16]
+                                
+                                if not regular_hours_df.empty:
+                                    # Get the last close price from regular hours (should be at 4:00 PM)
+                                    regular_close = float(regular_hours_df.iloc[-1]['close'])
+                                    logger.debug(f"Fetched regular close {regular_close} for {symbol} from minute data (4 PM close)")
+                                    return regular_close
+                                else:
+                                    # If no regular hours data yet, try to get the last bar at exactly 16:00
+                                    at_4pm = today_df[(today_df['timestamp'].dt.hour == 16) & (today_df['timestamp'].dt.minute == 0)]
+                                    if not at_4pm.empty:
+                                        regular_close = float(at_4pm.iloc[-1]['close'])
+                                        logger.debug(f"Fetched regular close {regular_close} for {symbol} from minute data (exactly 4 PM)")
+                                        return regular_close
+            except Exception as e:
+                logger.debug(f"Could not fetch regular close from minute data for {symbol}: {e}")
+            
+            return 0.0
+            
+        except Exception as e:
+            logger.debug(f"Error getting today's regular close for {symbol}: {e}")
             return 0.0
     
     def _analyze_single_gainer(self, gainer: Dict, rank_type: str) -> Optional[GainerData]:

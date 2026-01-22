@@ -76,12 +76,13 @@ class DailyTradeAnalyzer:
         except Exception as e:
             logger.error(f"Error scheduling daily analysis: {e}")
     
-    def run_daily_analysis(self, target_date: Optional[str] = None) -> DailyAnalysisReport:
+    def run_daily_analysis(self, target_date: Optional[str] = None, default_to_today: bool = False) -> DailyAnalysisReport:
         """
         Run comprehensive daily trade analysis
         
         Args:
-            target_date: Date to analyze (YYYY-MM-DD), defaults to yesterday
+            target_date: Date to analyze (YYYY-MM-DD)
+            default_to_today: If True and no target_date, use today instead of yesterday
             
         Returns:
             DailyAnalysisReport with comprehensive metrics
@@ -91,21 +92,99 @@ class DailyTradeAnalyzer:
             if target_date:
                 analysis_date = target_date
             else:
-                # Default to yesterday (since we run at 8pm for current day)
-                yesterday = datetime.now(self.et_timezone) - timedelta(days=1)
-                analysis_date = yesterday.strftime('%Y-%m-%d')
+                if default_to_today:
+                    # Default to today for manual runs
+                    today = datetime.now(self.et_timezone)
+                    analysis_date = today.strftime('%Y-%m-%d')
+                else:
+                    # Default to yesterday (for scheduled runs at 8pm)
+                    yesterday = datetime.now(self.et_timezone) - timedelta(days=1)
+                    analysis_date = yesterday.strftime('%Y-%m-%d')
             
             logger.info(f"Running daily trade analysis for {analysis_date}")
             
             # Get all trades for the day
             trades = self.db.get_all_trades()
-            daily_trades = [
-                trade for trade in trades 
-                if trade.get('exit_time', '').startswith(analysis_date)
-            ]
+            
+            # Parse analysis date for comparison
+            try:
+                analysis_datetime = datetime.strptime(analysis_date, '%Y-%m-%d')
+                analysis_date_start = analysis_datetime.replace(tzinfo=self.et_timezone)
+                analysis_date_end = analysis_date_start + timedelta(days=1)
+            except Exception as e:
+                logger.error(f"Error parsing analysis date: {e}")
+                return self._create_empty_report(analysis_date)
+            
+            # Filter trades by exit date (handle various date formats)
+            daily_trades = []
+            all_exit_dates = []
+            for trade in trades:
+                exit_time_str = trade.get('exit_time')
+                if not exit_time_str:
+                    continue
+                
+                # Track all exit dates for debugging
+                all_exit_dates.append(str(exit_time_str)[:10])  # First 10 chars (YYYY-MM-DD)
+                
+                try:
+                    # Parse exit_time to datetime
+                    exit_dt = None
+                    
+                    if isinstance(exit_time_str, str):
+                        # Remove timezone info if present for parsing
+                        exit_time_clean = exit_time_str.replace('Z', '').replace('+00:00', '').strip()
+                        
+                        # Try pandas parsing first (handles many formats)
+                        try:
+                            exit_dt = pd.to_datetime(exit_time_clean)
+                            # Convert pandas Timestamp to datetime if needed
+                            if hasattr(exit_dt, 'to_pydatetime'):
+                                exit_dt = exit_dt.to_pydatetime()
+                        except:
+                            # Fallback to manual parsing
+                            try:
+                                # Try ISO format
+                                exit_dt = datetime.strptime(exit_time_clean[:19], '%Y-%m-%d %H:%M:%S')
+                            except:
+                                # Try ISO format with T separator
+                                try:
+                                    exit_dt = datetime.strptime(exit_time_clean[:19], '%Y-%m-%dT%H:%M:%S')
+                                except:
+                                    # Last resort: just use date part
+                                    exit_dt = datetime.strptime(exit_time_clean[:10], '%Y-%m-%d')
+                    else:
+                        # If it's already a datetime-like object
+                        exit_dt = pd.to_datetime(exit_time_str)
+                        if hasattr(exit_dt, 'to_pydatetime'):
+                            exit_dt = exit_dt.to_pydatetime()
+                    
+                    if exit_dt:
+                        # Localize if no timezone
+                        if exit_dt.tzinfo is None:
+                            exit_dt = self.et_timezone.localize(exit_dt)
+                        else:
+                            # Convert to ET timezone
+                            exit_dt = exit_dt.astimezone(self.et_timezone)
+                        
+                        # Check if exit date matches analysis date
+                        if analysis_date_start <= exit_dt < analysis_date_end:
+                            daily_trades.append(trade)
+                except Exception as e:
+                    logger.debug(f"Error parsing exit_time '{exit_time_str}': {e}")
+                    # Fallback to string matching
+                    exit_time_str_clean = str(exit_time_str).strip()
+                    if exit_time_str_clean.startswith(analysis_date):
+                        daily_trades.append(trade)
+            
+            # Log debugging info
+            if all_exit_dates:
+                unique_dates = sorted(set(all_exit_dates))
+                logger.info(f"Found {len(trades)} total trades with exit dates: {unique_dates[:10]}")  # Show first 10
+            else:
+                logger.warning(f"Found {len(trades)} total trades, but none have exit_time")
             
             if not daily_trades:
-                logger.warning(f"No trades found for {analysis_date}")
+                logger.warning(f"No trades found for {analysis_date} (checked {len(trades)} total trades)")
                 return self._create_empty_report(analysis_date)
             
             # Get rejected entries for the day

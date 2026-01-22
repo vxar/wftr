@@ -24,7 +24,12 @@ def find_tickerid_for_symbol(symbol):
 
         response = requests.get(url, headers=headers)
         data = response.json()
-        tickerid = data['data'][0]['tickerId']
+        
+        # Check if data exists and has results
+        if 'data' in data and isinstance(data['data'], list) and len(data['data']) > 0:
+            tickerid = data['data'][0]['tickerId']
+        else:
+            log.debug(f"find_tickerid_for_symbol: No ticker found for symbol {symbol}")
     except Exception as e:
         log.error(f"find_tickerid_for_symbol: " + str(e) + "\n" + traceback.format_exc())
 
