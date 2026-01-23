@@ -25,6 +25,7 @@ class ExitReason(Enum):
     TIME_EXIT = "time_exit"
     MANUAL_EXIT = "manual_exit"
     END_OF_DAY = "end_of_day"
+    END_OF_DAY_VOLUME_DROP = "end_of_day_volume_drop"
 
 class PositionType(Enum):
     """Types of positions with different exit strategies"""
@@ -83,6 +84,10 @@ class ActivePosition:
     risk_score: float = 0.0  # 0-1, higher is riskier
     volatility_score: float = 0.0  # 0-1, current volatility
     
+    # End-of-day tracking
+    volume_history: List[float] = field(default_factory=list)  # Track volume over time
+    last_volume_check_time: Optional[datetime] = None
+    
     # Metadata
     entry_pattern: str = ""
     entry_confidence: float = 0.0
@@ -107,6 +112,46 @@ class IntelligentPositionManager:
         self.position_size_pct = position_size_pct
         self.risk_per_trade = risk_per_trade
         self.et_timezone = pytz.timezone('America/New_York')
+        
+        # End-of-day volume drop configuration
+        self.end_of_day_config = {
+            'volume_check_start_time': (15, 50),  # 3:50 PM ET
+            'volume_drop_threshold': 40.0,  # 40% drop threshold
+            'low_absolute_volume_threshold': 2.0,  # Below 2.0x normal volume
+            'volume_history_interval': 2.0,  # Check every 2 minutes
+            'max_volume_history': 20,  # Keep 20 readings
+            
+            # Exit percentages by position type and time
+            'before_4pm_exit': {
+                PositionType.SURGE: 0.5,    # Exit 50% before 4:00 PM
+                PositionType.SWING: 0.75,   # Exit 75% before 4:00 PM
+                PositionType.SCALP: 0.75,   # Exit 75% before 4:00 PM
+                PositionType.BREAKOUT: 0.75, # Exit 75% before 4:00 PM
+                PositionType.SLOW_MOVER: 0.75 # Exit 75% before 4:00 PM
+            },
+            'after_4pm_exit': {
+                PositionType.SURGE: 0.75,   # Exit 75% after 4:00 PM
+                PositionType.SWING: 1.0,    # Exit 100% after 4:00 PM
+                PositionType.SCALP: 1.0,    # Exit 100% after 4:00 PM
+                PositionType.BREAKOUT: 1.0, # Exit 100% after 4:00 PM
+                PositionType.SLOW_MOVER: 1.0 # Exit 100% after 4:00 PM
+            },
+            
+            # Momentum exception thresholds
+            'momentum_exception': {
+                'strong_momentum_threshold': 25.0,  # >25% in 5 min
+                'strong_momentum_volume': 3.0,      # >3x volume
+                'price_surge_threshold': 15.0,       # >15% in 1 min
+                'price_surge_volume': 5.0,           # >5x volume
+                'profitable_threshold': 10.0,         # >10% profit
+                'profitable_volume': 4.0,             # >4x volume
+                
+                # Surge position specific
+                'surge_profit_threshold': 8.0,        # >8% profit for surge
+                'surge_volume_threshold': 2.5,        # >2.5x volume for surge
+                'surge_momentum_threshold': 15.0      # >15% momentum for surge
+            }
+        }
         
         # Active positions
         self.active_positions: Dict[str, ActivePosition] = {}
@@ -150,7 +195,7 @@ class IntelligentPositionManager:
                 position_type=PositionType.SURGE,
                 initial_stop_loss=12.0,  # Increased from 6.0% to 12.0% to allow surge to develop (matches realtime_trader surge logic)
                 trailing_stop_enabled=True,
-                partial_profit_levels=[(4.0, 0.25), (8.0, 0.25), (15.0, 0.25)],  # 25% at 4%, 8%, 15%
+                partial_profit_levels=[(4.0, 0.5), (8.0, 0.25), (15.0, 0.25)],  # 50% at 4%, 25% at 8%, 25% at 15%
                 final_target=25.0,
                 max_hold_time=timedelta(hours=2)
             ),
@@ -523,6 +568,7 @@ class IntelligentPositionManager:
     
     def _update_position_data(self, position: ActivePosition, current_price: float, market_data: Dict):
         """Update position data with current market information"""
+        current_time = datetime.now(self.et_timezone)
         position.current_price = current_price
         
         # Calculate unrealized P&L
@@ -533,7 +579,7 @@ class IntelligentPositionManager:
         # Update max price reached
         if current_price > position.max_price_reached:
             position.max_price_reached = current_price
-            position.time_at_max_price = datetime.now(self.et_timezone)
+            position.time_at_max_price = current_time
         
         # Update max unrealized P&L
         if price_change_pct > position.max_unrealized_pct:
@@ -541,6 +587,10 @@ class IntelligentPositionManager:
         
         # Update volatility score
         position.volatility_score = market_data.get('volatility_score', 0.0)
+        
+        # Track volume history for end-of-day analysis
+        volume_ratio = market_data.get('volume_ratio', 1.0)
+        self._update_volume_history(position, volume_ratio, current_time)
         
         # Update trailing stop if enabled
         if position.exit_plan.trailing_stop_enabled and position.unrealized_pnl_pct > 2.0:
@@ -570,6 +620,126 @@ class IntelligentPositionManager:
             position.trailing_stop_price = new_trailing_stop
             position.current_stop_loss = new_trailing_stop
     
+    def _update_volume_history(self, position: ActivePosition, volume_ratio: float, current_time: datetime):
+        """Update volume history for end-of-day analysis"""
+        # Initialize if first time
+        if position.last_volume_check_time is None:
+            position.last_volume_check_time = current_time
+            position.volume_history.append(volume_ratio)
+            return
+        
+        # Add volume reading based on configured interval
+        time_since_last_check = (current_time - position.last_volume_check_time).total_seconds() / 60
+        if time_since_last_check >= self.end_of_day_config['volume_history_interval']:
+            position.volume_history.append(volume_ratio)
+            position.last_volume_check_time = current_time
+            
+            # Keep only configured number of readings
+            max_history = self.end_of_day_config['max_volume_history']
+            if len(position.volume_history) > max_history:
+                position.volume_history = position.volume_history[-max_history:]
+    
+    def _detect_end_of_day_volume_drop(self, position: ActivePosition, current_time: datetime) -> bool:
+        """Detect if volume is dropping significantly after configured start time"""
+        start_hour, start_minute = self.end_of_day_config['volume_check_start_time']
+        
+        # Only check after configured start time
+        if current_time.hour < start_hour or (current_time.hour == start_hour and current_time.minute < start_minute):
+            return False
+        
+        # NEW: Don't apply volume drop logic to positions entered after 4:00 PM
+        # These are intentional after-hours trades and should be handled differently
+        if current_time.hour >= 16:
+            entry_hour = position.entry_time.hour
+            if entry_hour >= 16:  # Position entered after 4:00 PM
+                logger.debug(f"[{position.ticker}] Skipping volume drop check - after-hours entry at {entry_hour}:xx")
+                return False
+        
+        # Need at least 3 volume readings for trend analysis
+        if len(position.volume_history) < 3:
+            return False
+        
+        # Get recent volume readings
+        recent_volumes = position.volume_history[-3:]  # Last 3 readings
+        current_volume = recent_volumes[-1]
+        
+        # Calculate volume trend
+        if len(recent_volumes) >= 3:
+            # Compare current to average of previous 2 readings
+            prev_avg = (recent_volumes[0] + recent_volumes[1]) / 2
+            volume_drop_pct = ((prev_avg - current_volume) / prev_avg) * 100
+            
+            # Use configured thresholds
+            drop_threshold = self.end_of_day_config['volume_drop_threshold']
+            low_volume_threshold = self.end_of_day_config['low_absolute_volume_threshold']
+            
+            # Volume drop detected if:
+            # 1. Current volume dropped more than configured threshold from recent average
+            # 2. Current volume is below configured absolute threshold
+            # 3. Volume is consistently declining
+            
+            significant_drop = volume_drop_pct > drop_threshold
+            low_absolute_volume = current_volume < low_volume_threshold
+            consistent_decline = all(recent_volumes[i] > recent_volumes[i+1] for i in range(len(recent_volumes)-1))
+            
+            if significant_drop or (low_absolute_volume and consistent_decline):
+                logger.info(f"[{position.ticker}] END-OF-DAY VOLUME DROP: Current={current_volume:.2f}x, Drop={volume_drop_pct:.1f}%, Consistent={consistent_decline}")
+                return True
+        
+        return False
+    
+    def _has_momentum_exception(self, position: ActivePosition, market_data: Dict, current_time: datetime) -> bool:
+        """Check if position has strong momentum to override end-of-day exit"""
+        momentum = market_data.get('momentum_5min', 0.0)
+        volume_ratio = market_data.get('volume_ratio', 1.0)
+        price_change = market_data.get('price_change_pct', 0.0)
+        
+        # Use configured thresholds
+        config = self.end_of_day_config['momentum_exception']
+        
+        # Enhanced momentum exception criteria for after-hours trading:
+        # 1. Very strong momentum AND high volume
+        # 2. Strong price surge AND very high volume  
+        # 3. Position is highly profitable AND volume is still strong
+        # 4. NEW: After-hours specific criteria
+        
+        strong_momentum = (momentum > config['strong_momentum_threshold'] and 
+                          volume_ratio > config['strong_momentum_volume'])
+        
+        price_surge = (price_change > config['price_surge_threshold'] and 
+                      volume_ratio > config['price_surge_volume'])
+        
+        profitable_with_volume = (position.unrealized_pnl_pct > config['profitable_threshold'] and 
+                                 volume_ratio > config['profitable_volume'])
+        
+        # Special consideration for SURGE position types
+        surge_exception = (position.position_type == PositionType.SURGE and 
+                         position.unrealized_pnl_pct > config['surge_profit_threshold'] and 
+                         volume_ratio > config['surge_volume_threshold'] and 
+                         momentum > config['surge_momentum_threshold'])
+        
+        # NEW: After-hours specific exceptions
+        after_hours_exception = False
+        if current_time.hour >= 16:  # After 4:00 PM
+            # More lenient criteria for after-hours momentum
+            # Allow positions with any positive momentum and decent volume to continue
+            after_hours_momentum = momentum > 10.0 and volume_ratio > 1.5
+            # Allow profitable positions to continue even with lower volume
+            after_hours_profitable = position.unrealized_pnl_pct > 5.0 and volume_ratio > 1.0
+            # Allow surge positions with any profit to continue
+            after_hours_surge = (position.position_type == PositionType.SURGE and 
+                               position.unrealized_pnl_pct > 2.0 and volume_ratio > 0.8)
+            
+            after_hours_exception = after_hours_momentum or after_hours_profitable or after_hours_surge
+        
+        has_exception = strong_momentum or price_surge or profitable_with_volume or surge_exception or after_hours_exception
+        
+        if has_exception:
+            exception_type = "STANDARD" if (strong_momentum or price_surge or profitable_with_volume or surge_exception) else "AFTER_HOURS"
+            logger.info(f"[{position.ticker}] MOMENTUM EXCEPTION ({exception_type}): Momentum={momentum:.1f}%, Vol={volume_ratio:.1f}x, P&L={position.unrealized_pnl_pct:.1f}%")
+        
+        return has_exception
+    
     def _check_exit_conditions(self, position: ActivePosition, market_data: Dict) -> Optional[Dict]:
         """Check if position should be exited"""
         current_time = datetime.now(self.et_timezone)
@@ -578,6 +748,37 @@ class IntelligentPositionManager:
         
         stop_loss_str = f"${position.current_stop_loss:.4f}" if position.current_stop_loss else "None"
         logger.info(f"[{position.ticker}] Checking exit conditions: P&L={position.unrealized_pnl_pct:.2f}%, Price=${position.current_price:.4f}, Stop={stop_loss_str}, Time={minutes_in_position:.1f}min")
+        
+        # Check end-of-day volume drop (NEW LOGIC)
+        if self._detect_end_of_day_volume_drop(position, current_time):
+            # Check for momentum exception before exiting
+            if not self._has_momentum_exception(position, market_data, current_time):
+                # Determine exit percentage based on position type and time using config
+                if current_time.hour >= 16:  # After 4:00 PM - more aggressive
+                    exit_percentage = self.end_of_day_config['after_4pm_exit'].get(position.position_type, 1.0)
+                else:  # Before 4:00 PM - more conservative
+                    exit_percentage = self.end_of_day_config['before_4pm_exit'].get(position.position_type, 0.75)
+                
+                logger.info(f"[{position.ticker}] END-OF-DAY VOLUME EXIT: {exit_percentage*100:.0f}% position @ ${position.current_price:.4f}")
+                
+                if exit_percentage >= 1.0:
+                    # Complete exit
+                    return {
+                        'reason': ExitReason.END_OF_DAY_VOLUME_DROP,
+                        'price': position.current_price,
+                        'message': f"Complete exit due to end-of-day volume drop"
+                    }
+                else:
+                    # Partial exit
+                    return {
+                        'reason': ExitReason.PARTIAL_PROFIT_1,  # Use partial profit mechanism
+                        'price': position.current_price,
+                        'sell_percentage': exit_percentage,
+                        'profit_level': 0,  # Not a profit-based exit
+                        'message': f"Partial exit ({exit_percentage*100:.0f}%) due to end-of-day volume drop"
+                    }
+            else:
+                logger.info(f"[{position.ticker}] END-OF-DAY VOLUME DROP OVERRIDE: Momentum exception keeps position open")
         
         # Check time-based exit
         if position.exit_plan.max_hold_time:
