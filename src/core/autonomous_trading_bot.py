@@ -26,7 +26,8 @@ from .realtime_trader import RealtimeTrader
 from ..data.webull_data_api import WebullDataAPI
 from ..config.settings import settings
 from ..database.trading_database import TradingDatabase, PositionRecord, TradeRecord
-from ..utils.trade_processing import process_exit_to_trade_data, process_entry_signal
+from ..utils.trade_processing import process_exit_to_trade_data, process_entry_signal, execute_broker_exit_order
+from ..broker.ibkr_integration import IBKRBrokerIntegration
 
 logger = logging.getLogger(__name__)
 
@@ -45,21 +46,21 @@ class AutonomousTradingBot:
         self.et_timezone = pytz.timezone('America/New_York')
         self.running = False
         
-        # Default configuration
+        # Use centralized settings with optional overrides
         base_config = {
-            'initial_capital': 10000.0,
-            'target_capital': 25000.0,
-            'max_positions': 3,
-            'position_size_pct': 0.33,
+            'initial_capital': settings.capital.initial_capital,
+            'target_capital': settings.capital.target_capital,
+            'max_positions': settings.trading.max_positions,
+            'position_size_pct': settings.trading.position_size_pct,
             'risk_per_trade': 0.02,
             
             # Scanning parameters
-            'scanner_max_tickers': 30,
+            'scanner_max_tickers': 25,
             'scanner_update_interval': 60,  # seconds
             
             # Dashboard
-            'dashboard_enabled': True,
-            'dashboard_port': 5000,
+            'dashboard_enabled': settings.web.debug,
+            'dashboard_port': settings.web.port,
             
             # Data retention
             'data_retention_days': 90
@@ -141,6 +142,34 @@ class AutonomousTradingBot:
             # Restore active positions from database on startup
             self._restore_active_positions_from_db()
             
+            # Initialize broker integration
+            self.broker_integration = None
+            try:
+                broker_config = BrokerConfig(
+                    enabled=settings.broker.enabled,
+                    paper_trading=settings.broker.paper_trading,
+                    host=settings.broker.ib_host,
+                    port=settings.broker.ib_port,
+                    client_id=settings.broker.client_id,
+                    max_order_size_usd=settings.broker.max_order_size_usd,
+                    min_order_size_usd=settings.broker.min_order_size_usd,
+                    order_timeout_seconds=settings.broker.order_timeout_seconds,
+                    max_retries=settings.broker.max_retries,
+                    retry_delay_seconds=settings.broker.retry_delay_seconds
+                )
+                
+                self.broker_integration = IBKRBrokerIntegration(broker_config)
+                
+                # Connect to broker if enabled
+                if self.broker_integration.connect():
+                    logger.info("Broker integration connected successfully")
+                else:
+                    logger.warning("Broker integration failed to connect - running in simulation mode")
+                    
+            except Exception as e:
+                logger.error(f"Error initializing broker integration: {e}")
+                self.broker_integration = None
+            
         except Exception as e:
             logger.error(f"Error initializing components: {e}")
             raise
@@ -181,6 +210,14 @@ class AutonomousTradingBot:
                 return
                 
             self.running = False
+            
+            # Disconnect from broker
+            if self.broker_integration:
+                try:
+                    self.broker_integration.disconnect()
+                    logger.info("Broker integration disconnected")
+                except Exception as e:
+                    logger.error(f"Error disconnecting broker: {e}")
             
             # Stop scheduler
             if hasattr(self, 'scheduler'):
@@ -420,7 +457,8 @@ class AutonomousTradingBot:
                     self.position_manager,
                     entry_config,
                     current_capital=self.current_capital,
-                    timestamp=datetime.now(self.et_timezone)
+                    timestamp=datetime.now(self.et_timezone),
+                    broker_integration=self.broker_integration
                 )
                 
                 if entry_result and entry_result.get('success'):
@@ -497,6 +535,25 @@ class AutonomousTradingBot:
             market_data = {}
             
             logger.info(f"Updating positions: {len(active_positions)} active position(s)")
+            
+            # Reconcile positions with broker if broker integration is available
+            if self.broker_integration and self.broker_integration.is_connected():
+                try:
+                    discrepancies = self.broker_integration.reconcile_positions()
+                    if discrepancies:
+                        logger.warning(f"Found {len(discrepancies)} position discrepancies with broker")
+                        for symbol, disc in discrepancies.items():
+                            if symbol in active_positions:
+                                bot_qty = active_positions[symbol]['shares']
+                                broker_qty = disc['broker_quantity']
+                                if abs(bot_qty - broker_qty) > 1:  # Allow small differences
+                                    logger.warning(f"[{symbol}] Position mismatch: Bot={bot_qty}, Broker={broker_qty}")
+                                    # Update bot position to match broker
+                                    if symbol in self.position_manager.active_positions:
+                                        self.position_manager.active_positions[symbol].shares = broker_qty
+                                        logger.info(f"[{symbol}] Updated position to match broker: {broker_qty} shares")
+                except Exception as e:
+                    logger.error(f"Error reconciling positions: {e}")
             
             # Analyze each active position with RealtimeTrader for exit signals
             for ticker in active_positions.keys():
@@ -650,90 +707,120 @@ class AutonomousTradingBot:
             logger.error(f"Error updating positions: {e}")
     
     def _process_position_exit(self, exit_decision):
-        """Process a position exit using shared trade processing logic"""
+        """Process a position exit with proper partial fill handling"""
         try:
             # Use shared trade processing function
             trade_data = process_exit_to_trade_data(
                 exit_decision,
                 self.position_manager,
-                datetime.now(self.et_timezone)
+                timestamp=datetime.now(self.et_timezone),
+                broker_integration=self.broker_integration
             )
             
-            if trade_data is None:
-                logger.error(f"Failed to process exit: {exit_decision}")
+            if not trade_data:
+                logger.error(f"Failed to process exit trade data: {exit_decision}")
                 return
             
-            ticker = trade_data['ticker']
-            is_partial_exit = trade_data['is_partial_exit']
+            # Execute broker sell order
+            broker_result = execute_broker_exit_order(trade_data, self.broker_integration)
             
-            # Save completed trade to database
-            try:
-                trade_record = TradeRecord(
-                    ticker=trade_data['ticker'],
-                    entry_time=trade_data['entry_time'],
-                    exit_time=trade_data['exit_time'],
-                    entry_price=trade_data['entry_price'],
-                    exit_price=trade_data['exit_price'],
-                    shares=trade_data['shares'],
-                    entry_value=trade_data['entry_value'],
-                    exit_value=trade_data['exit_value'],
-                    pnl_pct=trade_data['pnl_pct'],
-                    pnl_dollars=trade_data['pnl'],
-                    entry_pattern=trade_data['entry_pattern'],
-                    exit_reason=trade_data['exit_reason'],
-                    confidence=trade_data['confidence']
-                )
-                self.db.add_trade(trade_record)
-                logger.debug(f"[{ticker}] Trade saved to database")
+            # Handle partial fills and update position accordingly
+            actual_filled_shares = broker_result.get('filled_quantity', trade_data['shares'])
+            remaining_shares = broker_result.get('remaining_quantity', 0)
+            
+            # Update trade data with actual execution details
+            if broker_result['success'] and actual_filled_shares > 0:
+                # Update trade data with actual execution details
+                trade_data['exit_price'] = broker_result.get('avg_fill_price', trade_data['exit_price'])
+                trade_data['shares'] = actual_filled_shares
+                trade_data['exit_value'] = actual_filled_shares * trade_data['exit_price']
+                trade_data['pnl'] = trade_data['exit_value'] - trade_data['entry_value']
+                trade_data['pnl_pct'] = ((trade_data['exit_price'] - trade_data['entry_price']) / trade_data['entry_price'] * 100) if trade_data['entry_price'] > 0 else 0
                 
-                # Only close position in database if it's a complete exit (not partial)
-                if not is_partial_exit:
-                    self.db.close_position(ticker)
-                    logger.debug(f"[{ticker}] Position closed in database (complete exit)")
+                # Log the exit with actual execution details
+                logger.info(f"[{trade_data['ticker']}] POSITION EXITED: {actual_filled_shares:.2f} shares @ ${trade_data['exit_price']:.4f}")
+                logger.info(f"[{trade_data['ticker']}] P&L: ${trade_data['pnl']:.2f} ({trade_data['pnl_pct']:.2f}%)")
+                
+                if broker_result.get('broker_order_id'):
+                    logger.info(f"[{trade_data['ticker']}] Broker order ID: {broker_result['broker_order_id']}")
+                
+                # Handle partial exit - update position in position manager
+                if remaining_shares > 0:
+                    logger.warning(f"[{trade_data['ticker']}] PARTIAL EXIT: {actual_filled_shares:.2f} shares sold, {remaining_shares:.2f} shares remaining")
+                    
+                    # Update position in position manager
+                    position = None
+                    if trade_data['ticker'] in self.position_manager.active_positions:
+                        position = self.position_manager.active_positions[trade_data['ticker']]
+                        position.shares = remaining_shares
+                        position.current_price = trade_data['exit_price']
+                        
+                        # Recalculate position value
+                        position.entry_value = position.entry_price * remaining_shares
+                        position.unrealized_pnl_dollars = (trade_data['exit_price'] - position.entry_price) * remaining_shares
+                        position.unrealized_pnl_pct = ((trade_data['exit_price'] - position.entry_price) / position.entry_price * 100) if position.entry_price > 0 else 0
+                        
+                        logger.info(f"[{trade_data['ticker']}] Updated position: {remaining_shares:.2f} shares remaining @ ${trade_data['exit_price']:.4f}")
+                    
+                    # Update position in database for partial exit
+                    try:
+                        # Calculate entry_value from entry_price and remaining shares
+                        entry_value = trade_data['entry_price'] * remaining_shares
+                        self.db.update_position(
+                            ticker=trade_data['ticker'],
+                            shares=remaining_shares,
+                            entry_value=entry_value
+                        )
+                        logger.debug(f"[{trade_data['ticker']}] Position updated in database for partial exit")
+                    except Exception as e:
+                        logger.error(f"[{trade_data['ticker']}] Error updating position in database: {e}")
                 else:
-                    logger.debug(f"[{ticker}] Position remains active (partial exit: {trade_data['shares']:.2f} shares sold)")
-            except Exception as e:
-                logger.error(f"[{ticker}] Error saving trade to database: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
+                    # Complete exit - remove position from memory
+                    if trade_data['ticker'] in self.position_manager.active_positions:
+                        del self.position_manager.active_positions[trade_data['ticker']]
+                        logger.info(f"[{trade_data['ticker']}] Position completely closed")
+                    
+                    # Remove position from database
+                    try:
+                        self.db.close_position(trade_data['ticker'])
+                        logger.debug(f"[{trade_data['ticker']}] Position removed from database")
+                    except Exception as e:
+                        logger.error(f"[{trade_data['ticker']}] Error removing position from database: {e}")
+                
+                # Update capital with actual exit value
+                self.current_capital += trade_data['exit_value']
+                
+                # Save trade to database
+                try:
+                    trade_record = TradeRecord(
+                        ticker=trade_data['ticker'],
+                        entry_time=trade_data['entry_time'],
+                        exit_time=trade_data['exit_time'],
+                        entry_price=trade_data['entry_price'],
+                        exit_price=trade_data['exit_price'],
+                        shares=actual_filled_shares,  # Use actual filled shares
+                        entry_value=trade_data['entry_value'],
+                        exit_value=trade_data['exit_value'],
+                        pnl_dollars=trade_data['pnl'],
+                        pnl_pct=trade_data['pnl_pct'],
+                        entry_pattern=trade_data['entry_pattern'],
+                        exit_reason=trade_data['exit_reason'],
+                        confidence=trade_data['confidence']
+                    )
+                    self.db.add_trade(trade_record)
+                    logger.debug(f"[{trade_data['ticker']}] Trade saved to database")
+                except Exception as e:
+                    logger.error(f"[{trade_data['ticker']}] Error saving trade to database: {e}")
             
-            # Update performance metrics
-            self.performance_metrics['total_trades'] += 1
-            if trade_data['pnl'] > 0:
-                self.performance_metrics['winning_trades'] += 1
-                self.performance_metrics['total_pnl'] += trade_data['pnl']
             else:
-                self.performance_metrics['losing_trades'] += 1
-            
-            # Return capital
-            self.current_capital += trade_data['exit_value']
-            
-            # Calculate hold time
-            hold_time = trade_data['exit_time'] - trade_data['entry_time']
-            hold_minutes = hold_time.total_seconds() / 60
-            
-            # Log detailed exit analysis
-            status = "WIN" if trade_data['pnl'] > 0 else "LOSS"
-            exit_type = "PARTIAL" if is_partial_exit else "COMPLETE"
-            logger.info(f"\n{'='*80}")
-            logger.info(f"{status} {exit_type} EXIT: {ticker} @ ${trade_data['exit_price']:.4f}")
-            logger.info(f"   Entry: ${trade_data['entry_price']:.4f} @ {trade_data['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"   Exit: ${trade_data['exit_price']:.4f} @ {trade_data['exit_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"   Shares: {int(trade_data['shares'])} {'(partial)' if is_partial_exit else '(full)'}")
-            logger.info(f"   Entry Value: ${trade_data['entry_value']:,.2f}")
-            logger.info(f"   Exit Value: ${trade_data['exit_value']:,.2f}")
-            logger.info(f"   P&L: {trade_data['pnl_pct']:+.2f}% (${trade_data['pnl']:+,.2f})")
-            logger.info(f"   Hold Time: {hold_minutes:.1f} minutes ({hold_time})")
-            logger.info(f"   Capital: ${self.current_capital:,.2f}")
-            logger.info(f"   Pattern: {trade_data['entry_pattern']}")
-            logger.info(f"   Confidence: {trade_data['confidence']:.2%}")
-            logger.info(f"   Exit Reason: {trade_data['exit_reason']}")
-            logger.info(f"{'='*80}\n")
+                # Exit failed - no shares sold
+                logger.error(f"[{trade_data['ticker']}] Exit failed: {broker_result.get('error', 'Unknown error')}")
+                # Position remains active - no changes needed
             
         except Exception as e:
             logger.error(f"Error processing position exit: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            logger.error(f"Traceback: {traceback.format_exc()}")
     
     def _get_current_market_data(self, ticker: str) -> Optional[Dict]:
         """Get current market data for a ticker"""
@@ -796,7 +883,7 @@ class AutonomousTradingBot:
             self.monitored_tickers = []
             self.last_ticker_update = current_time
             
-            for i, gainer in enumerate(gainers[:30]):  # Limit to 30
+            for i, gainer in enumerate(gainers[:25]):  # Limit to 25
                 # Get additional analysis data for this ticker
                 ticker_data = {
                     'symbol': gainer.symbol,

@@ -20,19 +20,30 @@ from src.core.intelligent_position_manager import IntelligentPositionManager, Po
 from src.core.realtime_trader import RealtimeTrader
 from src.data.webull_data_api import WebullDataAPI
 from src.utils.trade_processing import process_exit_to_trade_data, process_entry_signal
+from src.config.settings import settings
 
 @dataclass
 class SimulationConfig:
     """Configuration parameters for trade simulator"""
     ticker: str
     detection_time: str  # Format: "YYYY-MM-DD HH:MM:SS"
-    initial_capital: float = 2500.0
-    max_positions: int = 1
+    initial_capital: Optional[float] = None
+    max_positions: Optional[int] = None
     commission_per_trade: float = 0.005  # 0.5% commission
     data_folder: str = "simulation_data"
     stop_loss_pct: float = 0.06  # 6% stop loss (increased from 4% based on optimization)
     take_profit_pct: float = 0.08  # 8% take profit
     min_hold_minutes: int = 10  # Minimum hold time
+    
+    def __post_init__(self):
+        """Apply centralized settings if not provided"""
+        if self.initial_capital is None:
+            self.initial_capital = settings.capital.initial_capital
+        if self.max_positions is None:
+            self.max_positions = settings.trading.max_positions
+        
+        # Calculate capital per position (total capital divided by max positions)
+        self.position_capital = self.initial_capital / self.max_positions
 
 
 @dataclass
@@ -79,6 +90,15 @@ class PureTradeSimulator:
         self.data = None
         self.logger = self._setup_logger()
         self.webull_api = WebullDataAPI()
+        
+        # Log capital allocation
+        self.logger.info(f"Simulator initialized with ${self.config.initial_capital:,.2f} total capital")
+        self.logger.info(f"Capital per position: ${self.config.position_capital:,.2f} ({self.config.max_positions} positions)")
+        
+        # DataFrame to track all entries and exits
+        self.entries_exits_df = pd.DataFrame(columns=[
+            'timestamp', 'action', 'price', 'pattern', 'confidence', 'exit_reason'
+        ])
         
         # Historical data for simulation
         self.historical_data = None
@@ -421,13 +441,14 @@ class PureTradeSimulator:
             )
         
         total_pnl = sum(trade.pnl for trade in self.trades)
-        total_pnl_pct = total_pnl / self.config.initial_capital
+        # Calculate percentage based on position capital (what was actually used for trading)
+        total_pnl_pct = total_pnl / self.config.position_capital
         winning_trades = len([t for t in self.trades if t.pnl > 0])
         losing_trades = len([t for t in self.trades if t.pnl < 0])
         win_rate = winning_trades / len(self.trades) if self.trades else 0
         
-        # Calculate max drawdown
-        capital_curve = [self.config.initial_capital]
+        # Calculate max drawdown based on position capital
+        capital_curve = [self.config.position_capital]
         for trade in self.trades:
             capital_curve.append(capital_curve[-1] + trade.pnl)
         
@@ -588,8 +609,8 @@ class PureTradeSimulator:
                 # Use shared entry processing function (same as bot)
                 entry_config = {
                     'max_positions': self.config.max_positions,
-                    'position_size_pct': 0.95,  # Simulator uses 95% of capital (same as before, but now uses shared logic)
-                    'initial_capital': self.config.initial_capital,
+                    'position_size_pct': 0.95,  # Simulator uses 95% of position capital
+                    'initial_capital': self.config.position_capital,
                     'min_capital': 100.0
                 }
                 
@@ -597,7 +618,7 @@ class PureTradeSimulator:
                     entry_signal,
                     self.position_manager,
                     entry_config,
-                    current_capital=self.config.initial_capital,  # Simulator uses initial capital (no capital tracking)
+                    current_capital=self.config.position_capital,  # Use position capital for trading
                     timestamp=timestamp
                 )
                 
@@ -605,6 +626,17 @@ class PureTradeSimulator:
                     position_type = entry_result.get('position_type')
                     position_type_str = position_type.value if hasattr(position_type, 'value') else str(position_type)
                     self.logger.info(f"Entered {position_type_str} position at {entry_signal.price:.2f} on {timestamp.strftime('%H:%M:%S')} (Pattern: {entry_result['entry_pattern']}, Confidence: {entry_result['confidence']*100:.1f}%)")
+                    
+                    # Add to entries/exits dataframe
+                    new_entry = pd.DataFrame([{
+                        'timestamp': timestamp.strftime('%H:%M:%S'),
+                        'action': f'ENTRY_{position_type_str.upper()}',
+                        'price': entry_signal.price,
+                        'pattern': entry_result['entry_pattern'],
+                        'confidence': f"{entry_result['confidence']*100:.1f}%",
+                        'exit_reason': ''
+                    }])
+                    self.entries_exits_df = pd.concat([self.entries_exits_df, new_entry], ignore_index=True)
                 elif entry_result:
                     self.logger.info(f"Entry signal rejected: {entry_result.get('reason', 'Unknown reason')}")
                 else:
@@ -641,6 +673,17 @@ class PureTradeSimulator:
                         
                         exit_type = "PARTIAL" if trade_data['is_partial_exit'] else "COMPLETE"
                         self.logger.info(f"{exit_type} exit at {trade_data['exit_price']:.2f} on {timestamp.strftime('%H:%M:%S')} - {trade_data['exit_reason']}")
+                        
+                        # Add to entries/exits dataframe
+                        new_exit = pd.DataFrame([{
+                            'timestamp': timestamp.strftime('%H:%M:%S'),
+                            'action': f'{exit_type}_EXIT',
+                            'price': trade_data['exit_price'],
+                            'pattern': '',
+                            'confidence': '',
+                            'exit_reason': trade_data['exit_reason']
+                        }])
+                        self.entries_exits_df = pd.concat([self.entries_exits_df, new_exit], ignore_index=True)
                 
         except Exception as e:
             self.logger.error(f"Error updating positions: {e}")

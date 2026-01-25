@@ -6,6 +6,9 @@ numpy>=1.24.0
 pytz>=2023.3
 requests>=2.31.0
 
+# Interactive Brokers Integration
+ib_insync>=0.9.37
+
 # Web Dashboard
 flask>=3.0.0
 flask-socketio>=5.3.0

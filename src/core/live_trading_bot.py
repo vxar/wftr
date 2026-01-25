@@ -14,6 +14,7 @@ from .realtime_trader import RealtimeTrader, TradeSignal, ActivePosition
 from ..data.api_interface import DataAPI
 from ..analysis.premarket_analyzer import PreMarketAnalyzer
 from ..database.trading_database import TradingDatabase, TradeRecord, PositionRecord
+from ..config.settings import settings
 import pytz
 
 # Configure logging
@@ -54,22 +55,22 @@ class LiveTradingBot:
     
     def __init__(self,
                  data_api: DataAPI,
-                 initial_capital: float = 10000.0,
-                 target_capital: float = 100000.0,
-                 min_confidence: float = 0.72,  # BALANCED: 72% - high-quality trades with reasonable opportunities
-                 min_entry_price_increase: float = 5.5,  # BALANCED: 5.5% - good quality setups
-                 trailing_stop_pct: float = 2.5,  # REFINED: 2.5% - tighter stops, cut losses faster
-                 profit_target_pct: float = 8.0,  # REFINED: 8% - realistic profit target
-                 position_size_pct: float = 0.50,  # REFINED: 50% - more conservative sizing
-                 max_positions: int = 3,
-                 max_loss_per_trade_pct: float = 2.5,  # REFINED: 2.5% - cut losses faster
-                 daily_profit_target_min: float = 500.0,
-                 daily_profit_target_max: float = 500.0,
-                 max_trades_per_day: int = 8,  # NEW: Limit trades per day for quality
-                 max_daily_loss: float = -300.0,  # NEW: Stop trading if daily loss exceeds this
-                 consecutive_loss_limit: int = 3,  # NEW: Pause after N consecutive losses
-                 trading_start_time: str = "04:00",
-                 trading_end_time: str = "20:00"):  # Trading window: 4:00 AM - 8:00 PM ET
+                 initial_capital: Optional[float] = None,
+                 target_capital: Optional[float] = None,
+                 min_confidence: Optional[float] = None,
+                 min_entry_price_increase: Optional[float] = None,
+                 trailing_stop_pct: Optional[float] = None,
+                 profit_target_pct: Optional[float] = None,
+                 position_size_pct: Optional[float] = None,
+                 max_positions: Optional[int] = None,
+                 max_loss_per_trade_pct: Optional[float] = None,
+                 daily_profit_target_min: Optional[float] = None,
+                 daily_profit_target_max: Optional[float] = None,
+                 max_trades_per_day: Optional[int] = None,
+                 max_daily_loss: Optional[float] = None,
+                 consecutive_loss_limit: Optional[int] = None,
+                 trading_start_time: Optional[str] = None,
+                 trading_end_time: Optional[str] = None):
         """
         Args:
             data_api: DataAPI instance for fetching live data
@@ -87,37 +88,51 @@ class LiveTradingBot:
             trading_start_time: Trading window start time (HH:MM format, ET)
             trading_end_time: Trading window end time (HH:MM format, ET)
         """
+        # Use centralized settings with optional overrides
         self.data_api = data_api
-        self.initial_capital = initial_capital
-        self.current_capital = initial_capital
-        self.target_capital = target_capital
-        # FIX: Pass rejection callback to save rejections to database
-        self.trader = RealtimeTrader(
-            min_confidence=min_confidence,
-            min_entry_price_increase=min_entry_price_increase,
-            trailing_stop_pct=trailing_stop_pct,
-            profit_target_pct=profit_target_pct,
-            data_api=data_api,  # Pass data_api for multi-timeframe analysis
-            rejection_callback=self._add_rejected_entry  # Pass callback to save rejections
-        )
-        self.premarket_analyzer = PreMarketAnalyzer(
-            min_confidence=min_confidence,
-            min_entry_price_increase=min_entry_price_increase
-        )
-        self.position_size_pct = position_size_pct
-        self.max_positions = max_positions
-        self.max_loss_per_trade_pct = max_loss_per_trade_pct
+        self.initial_capital = initial_capital or settings.capital.initial_capital
+        self.current_capital = self.initial_capital
+        self.target_capital = target_capital or settings.capital.target_capital
+        
+        # Trading configuration
+        trading_config = settings.trading
+        self.min_confidence = min_confidence or trading_config.min_confidence
+        self.min_entry_price_increase = min_entry_price_increase or trading_config.min_entry_price_increase
+        self.trailing_stop_pct = trailing_stop_pct or trading_config.trailing_stop_pct
+        self.profit_target_pct = profit_target_pct or trading_config.profit_target_pct
+        self.position_size_pct = position_size_pct or trading_config.position_size_pct
+        self.max_positions = max_positions or trading_config.max_positions
+        self.max_loss_per_trade_pct = max_loss_per_trade_pct or trading_config.max_loss_per_trade_pct
+        self.max_trades_per_day = max_trades_per_day or trading_config.max_trades_per_day
+        self.max_daily_loss = max_daily_loss or trading_config.max_daily_loss
+        self.consecutive_loss_limit = consecutive_loss_limit or trading_config.consecutive_loss_limit
         
         # Daily profit targets
-        self.daily_profit_target_min = daily_profit_target_min
-        self.daily_profit_target_max = daily_profit_target_max
-        self.daily_profit = 0.0
-        self.daily_start_capital = initial_capital
-        self.current_date = None
+        self.daily_profit_target_min = daily_profit_target_min or settings.capital.daily_profit_target_min
+        self.daily_profit_target_max = daily_profit_target_max or settings.capital.daily_profit_target_max
         
         # Trading window
-        self.trading_start_time = trading_start_time
-        self.trading_end_time = trading_end_time
+        window_config = settings.trading_window
+        self.trading_start_time = trading_start_time or window_config.start_time
+        self.trading_end_time = trading_end_time or window_config.end_time
+        self.daily_profit = 0.0
+        self.daily_start_capital = self.initial_capital
+        self.current_date = None
+        
+        # Initialize components with settings
+        self.trader = RealtimeTrader(
+            min_confidence=self.min_confidence,
+            min_entry_price_increase=self.min_entry_price_increase,
+            trailing_stop_pct=self.trailing_stop_pct,
+            profit_target_pct=self.profit_target_pct,
+            data_api=data_api,
+            rejection_callback=self._add_rejected_entry
+        )
+        self.premarket_analyzer = PreMarketAnalyzer(
+            min_confidence=self.min_confidence,
+            min_entry_price_increase=self.min_entry_price_increase
+        )
+        
         self.et_timezone = pytz.timezone('America/New_York')
         
         self.tickers: List[str] = []
@@ -243,7 +258,7 @@ class LiveTradingBot:
                             entry_value=float(db_pos.get('entry_value', 0)),
                             partial_profit_taken=bool(db_pos.get('partial_profit_taken', False)),
                             partial_profit_taken_second=bool(db_pos.get('partial_profit_taken_second', False)),
-                            original_shares=float(db_pos.get('shares', 0))  # Assume no partial exit yet
+                            original_shares=float(db_pos.get('original_shares', db_pos.get('shares', 0)))  # Use original_shares if available
                         )
                         
                         # Calculate unrealized P&L
@@ -434,7 +449,7 @@ class LiveTradingBot:
                 return self.data_cache[ticker]
             return None
     
-    def update_tickers_from_gainers(self, max_tickers: int = 30):
+    def update_tickers_from_gainers(self, max_tickers: int = 25):
         """
         Update ticker list from top gainers (if using WebullDataAPI)
         
@@ -1100,6 +1115,25 @@ class LiveTradingBot:
             position.original_shares = shares  # Store original shares
             position.entry_value = position_value
             
+            # Save position to database with original_shares
+            try:
+                from ..database.trading_database import PositionRecord
+                position_record = PositionRecord(
+                    ticker=signal.ticker,
+                    entry_time=signal.timestamp,
+                    entry_price=signal.price,
+                    shares=shares,
+                    entry_value=position_value,
+                    entry_pattern=signal.pattern if hasattr(signal, 'pattern') else 'Unknown',
+                    confidence=signal.confidence if hasattr(signal, 'confidence') else 0.0,
+                    target_price=position.target_price if hasattr(position, 'target_price') else None,
+                    stop_loss=position.stop_loss if hasattr(position, 'stop_loss') else None
+                )
+                self.db.add_position(position_record)
+                logger.debug(f"[{signal.ticker}] Position saved to database: {shares:.2f} shares @ ${signal.price:.4f}")
+            except Exception as e:
+                logger.error(f"[{signal.ticker}] Error saving position to database: {e}")
+            
             # Clear any rejected entries for this ticker since we successfully entered
             self.rejected_entries = [r for r in self.rejected_entries if r['ticker'] != signal.ticker]
             # Also clear from database
@@ -1379,17 +1413,17 @@ class LiveTradingBot:
                 # Tighten stop loss after second partial exit (trailing stop will handle it)
                 logger.info(f"[{signal.ticker}] Second partial profit taken, trailing stop active")
             
-            # Update position in database
+            # Update position in database with partial exit state
             try:
-                self.db.update_position(
+                self.db.update_partial_exit_state(
                     signal.ticker,
-                    target_price=position.target_price,
-                    stop_loss=position.stop_loss,
                     shares=position.shares,
-                    entry_value=position.entry_value
+                    entry_value=position.entry_value,
+                    partial_profit_taken=position.partial_profit_taken,
+                    partial_profit_taken_second=getattr(position, 'partial_profit_taken_second', False)
                 )
             except Exception as e:
-                logger.error(f"Error updating position in database: {e}")
+                logger.error(f"Error updating partial exit state in database: {e}")
             
             # Create partial trade record (only if ticker is valid)
             ticker = str(signal.ticker).strip() if signal.ticker else None
@@ -1618,7 +1652,7 @@ class LiveTradingBot:
         if should_refresh:
             try:
                 logger.info("Refreshing stock list from top gainers...")
-                self.update_tickers_from_gainers(max_tickers=30)
+                self.update_tickers_from_gainers(max_tickers=25)
                 self.last_stock_discovery = current_time
                 logger.info(f"Stock list refreshed. Now monitoring {len(self.tickers)} tickers from top gainers")
                 if self.tickers:

@@ -6,13 +6,15 @@ from typing import Dict, Optional, Tuple, Any
 from datetime import datetime
 import logging
 import pytz
+from ..config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 def process_exit_to_trade_data(
     exit_info: Dict,
     position_manager,
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[datetime] = None,
+    broker_integration: Optional[Any] = None
 ) -> Optional[Dict]:
     """
     Process an exit decision into standardized trade data.
@@ -177,12 +179,82 @@ def process_exit_to_trade_data(
         return None
 
 
+def execute_broker_exit_order(
+    trade_data: Dict,
+    broker_integration: Optional[Any] = None
+) -> Dict[str, Any]:
+    """
+    Execute a sell order through the broker integration with partial fill handling
+    
+    Args:
+        trade_data: Trade data from process_exit_to_trade_data
+        broker_integration: Broker integration instance
+        
+    Returns:
+        Dict with broker order result including actual filled quantities
+    """
+    result = {
+        'success': False,
+        'broker_order_id': None,
+        'filled_quantity': 0,
+        'avg_fill_price': 0.0,
+        'remaining_quantity': trade_data.get('shares', 0),
+        'status': 'Failed',
+        'error': None,
+        'simulated': True
+    }
+    
+    if broker_integration is None:
+        # No broker integration - simulate
+        logger.info(f"[SIMULATION] SELL {trade_data['ticker']}: {trade_data['shares']:.2f} shares @ ${trade_data['exit_price']:.2f}")
+        result['success'] = True
+        result['filled_quantity'] = trade_data['shares']
+        result['avg_fill_price'] = trade_data['exit_price']
+        result['remaining_quantity'] = 0
+        result['status'] = 'Simulated'
+        return result
+    
+    try:
+        # Place real sell order
+        broker_result = broker_integration.place_sell_order(
+            trade_data['ticker'], 
+            int(trade_data['shares']), 
+            trade_data['exit_price']
+        )
+        
+        if broker_result['success']:
+            result['success'] = True
+            result['broker_order_id'] = broker_result['order_id']
+            result['filled_quantity'] = broker_result.get('filled_quantity', trade_data['shares'])
+            result['avg_fill_price'] = broker_result.get('avg_fill_price', trade_data['exit_price'])
+            result['remaining_quantity'] = broker_result.get('remaining_quantity', 0)
+            result['status'] = broker_result.get('status', 'Completed')
+            result['simulated'] = broker_result.get('simulated', False)
+            
+            # Handle partial fills
+            if result['filled_quantity'] < trade_data['shares']:
+                logger.warning(f"[{trade_data['ticker']}] PARTIAL EXIT FILL: Requested {trade_data['shares']:.2f}, filled {result['filled_quantity']:.2f} shares")
+                logger.warning(f"[{trade_data['ticker']}] Remaining {result['remaining_quantity']:.2f} shares not sold")
+            else:
+                logger.info(f"Broker SELL order placed: {trade_data['ticker']} {result['filled_quantity']:.2f} shares @ ${result['avg_fill_price']:.4f}")
+        else:
+            result['error'] = broker_result['error']
+            logger.error(f"Failed to place broker SELL order for {trade_data['ticker']}: {broker_result['error']}")
+            
+    except Exception as e:
+        result['error'] = str(e)
+        logger.error(f"Exception placing broker SELL order for {trade_data['ticker']}: {e}")
+        
+    return result
+
+
 def process_entry_signal(
     entry_signal: Any,  # TradeSignal from RealtimeTrader
     position_manager,
     config: Dict,
     current_capital: Optional[float] = None,
-    timestamp: Optional[datetime] = None
+    timestamp: Optional[datetime] = None,
+    broker_integration: Optional[Any] = None
 ) -> Optional[Dict]:
     """
     Process an entry signal into a position entry.
@@ -222,7 +294,7 @@ def process_entry_signal(
         
         # Check max positions
         position_summary = position_manager.get_position_summary()
-        max_positions = config.get('max_positions', 3)
+        max_positions = config.get('max_positions', settings.trading.max_positions)
         if len(position_summary.get('active_positions', {})) >= max_positions:
             return {
                 'success': False,
@@ -233,7 +305,7 @@ def process_entry_signal(
         
         # Check capital
         if current_capital is None:
-            current_capital = config.get('initial_capital', 10000.0)
+            current_capital = config.get('initial_capital', settings.capital.initial_capital)
         
         min_capital = config.get('min_capital', 100.0)
         if current_capital < min_capital:
@@ -291,20 +363,86 @@ def process_entry_signal(
         )
         
         if success:
-            return {
-                'success': True,
-                'ticker': ticker,
-                'entry_price': entry_signal.price,
-                'shares': shares,
-                'position_value': position_value,
-                'position_type': position_type,
-                'entry_pattern': entry_signal.pattern_name if hasattr(entry_signal, 'pattern_name') else 'Unknown',
-                'confidence': confidence,
-                'target_price': getattr(entry_signal, 'target_price', None),
-                'stop_loss': getattr(entry_signal, 'stop_loss', None),
-                'reason': 'Position entered successfully',
-                'timestamp': timestamp
-            }
+            # Place real broker order if integration is available
+            broker_order_id = None
+            broker_result = None
+            actual_shares = shares
+            actual_price = entry_signal.price
+            
+            if broker_integration is not None:
+                try:
+                    # Validate order size with broker
+                    validation = broker_integration.validate_order_size(int(shares), entry_signal.price)
+                    if not validation['valid']:
+                        logger.warning(f"[{ticker}] Broker order validation failed: {validation['error']}")
+                        # Still proceed with simulation but log the issue
+                    else:
+                        # Place real buy order
+                        broker_result = broker_integration.place_buy_order(
+                            ticker, int(shares), entry_signal.price
+                        )
+                        
+                        if broker_result['success']:
+                            broker_order_id = broker_result['order_id']
+                            
+                            # Handle partial fills - update actual shares and price
+                            if broker_result.get('filled_quantity', 0) > 0:
+                                actual_shares = broker_result['filled_quantity']
+                                actual_price = broker_result.get('avg_fill_price', entry_signal.price)
+                                
+                                if actual_shares < shares:
+                                    logger.warning(f"[{ticker}] PARTIAL FILL: Requested {shares}, filled {actual_shares} shares @ ${actual_price:.4f}")
+                                    logger.warning(f"[{ticker}] Remaining {shares - actual_shares} shares not filled")
+                                
+                                # Update position manager with actual filled quantity
+                                if actual_shares > 0:
+                                    # Update the position with actual filled shares
+                                    position_manager.active_positions[ticker].shares = actual_shares
+                                    position_manager.active_positions[ticker].entry_value = actual_shares * actual_price
+                            else:
+                                logger.error(f"[{ticker}] Broker order placed but no fill reported")
+                                actual_shares = 0  # No actual shares filled
+                                
+                            logger.info(f"[{ticker}] Broker order placed: {broker_order_id}, filled: {actual_shares}/{shares} shares")
+                        else:
+                            logger.error(f"[{ticker}] Failed to place broker order: {broker_result['error']}")
+                            # Continue with simulation but mark as issue
+                            actual_shares = 0  # No shares filled
+                            
+                except Exception as e:
+                    logger.error(f"[{ticker}] Error placing broker order: {e}")
+                    actual_shares = 0  # No shares filled due to error
+            
+            # Only proceed if we actually got shares
+            if actual_shares > 0:
+                return {
+                    'success': True,
+                    'ticker': ticker,
+                    'entry_price': actual_price,
+                    'shares': actual_shares,
+                    'position_value': actual_shares * actual_price,
+                    'position_type': position_type,
+                    'entry_pattern': entry_signal.pattern_name if hasattr(entry_signal, 'pattern_name') else 'Unknown',
+                    'confidence': confidence,
+                    'target_price': getattr(entry_signal, 'target_price', None),
+                    'stop_loss': getattr(entry_signal, 'stop_loss', None),
+                    'reason': 'Position entered successfully',
+                    'timestamp': timestamp,
+                    'broker_order_id': broker_order_id,
+                    'broker_result': broker_result,
+                    'partial_fill': actual_shares < shares if shares > 0 else False,
+                    'requested_shares': shares,
+                    'filled_shares': actual_shares
+                }
+            else:
+                # No shares filled - treat as failed entry
+                return {
+                    'success': False,
+                    'ticker': ticker,
+                    'reason': 'No shares filled (partial fill or order failure)',
+                    'timestamp': timestamp,
+                    'broker_result': broker_result
+                }
         else:
             return {
                 'success': False,

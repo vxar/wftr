@@ -17,13 +17,13 @@ class TradingConfig:
     min_price_filter: float = 0.50  # Minimum stock price $0.50
     
     # Exit management (optimized from simulator)
-    trailing_stop_pct: float = 3.0  # 3.0% trailing stop - increased from 2.5%
+    trailing_stop_pct: float = 3.5  # 3.5% trailing stop - increased from 3.0%
     profit_target_pct: float = 8.0  # 8% profit target - unchanged
-    max_loss_per_trade_pct: float = 6.0  # Max 6% loss per trade - increased from 2.5% (key optimization)
+    max_loss_per_trade_pct: float = 4.0  # Max 4% loss per trade - reduced from 6.0% (widened stops)
     
     # Position sizing
     position_size_pct: float = 0.50  # 50% of capital per trade
-    max_positions: int = 3  # Maximum concurrent positions
+    max_positions: int = 5  # Maximum concurrent positions
     
     # Risk management
     max_trades_per_day: int = 1000  # Limit trades per day for quality
@@ -35,10 +35,10 @@ class TradingConfig:
 class SurgeDetectionConfig:
     """Surge detection configuration (optimized from simulator)"""
     enabled: bool = True
-    min_volume: int = 50000
-    min_volume_ratio: float = 150.0  # Increased from 100.0 to 150.0
+    min_volume: int = 30000  # Reduced from 50000 (-40%)
+    min_volume_ratio: float = 100.0  # Reduced from 150.0 (-33%)
     min_price_increase: float = 30.0
-    continuation_min_volume: int = 500000
+    continuation_min_volume: int = 300000  # Reduced from 500000 (-40%)
     exit_min_hold_minutes: int = 10  # Increased from 5 to 10 (minimum hold time)
     exit_max_hold_minutes: int = 30
     exit_trailing_stop_pct: float = 10.0
@@ -48,7 +48,7 @@ class SurgeDetectionConfig:
 @dataclass
 class CapitalConfig:
     """Capital management configuration"""
-    initial_capital: float = 10000.0
+    initial_capital: float = 20000.0
     target_capital: float = 100000.0
     daily_profit_target_min: float = 500.0
     daily_profit_target_max: float = 50000.0
@@ -91,6 +91,21 @@ class LoggingConfig:
 
 
 @dataclass
+class BrokerConfig:
+    """Broker integration configuration"""
+    enabled: bool = False  # Enable real broker trading
+    paper_trading: bool = True  # Use paper trading account
+    ib_host: str = "127.0.0.1"
+    ib_port: int = 7497  # 7497 for TWS, 7496 for Gateway
+    client_id: int = 1
+    max_order_size_usd: float = 10000.0
+    min_order_size_usd: float = 100.0
+    order_timeout_seconds: int = 30  # Timeout for order completion
+    max_retries: int = 3  # Maximum retry attempts for failed orders
+    retry_delay_seconds: int = 5  # Delay between retries
+
+
+@dataclass
 class WebConfig:
     """Web interface configuration"""
     host: str = "0.0.0.0"
@@ -112,6 +127,7 @@ class Settings:
         self.api = APIConfig()
         self.database = DatabaseConfig()
         self.logging = LoggingConfig()
+        self.broker = BrokerConfig()
         self.web = WebConfig()
         
         # Load environment overrides if provided
@@ -160,6 +176,17 @@ class Settings:
             
             'LOGGING_LEVEL': ('logging', 'level', str),
             'LOGGING_FILE': ('logging', 'file_name', str),
+            
+            'BROKER_ENABLED': ('broker', 'enabled', bool),
+            'BROKER_PAPER_TRADING': ('broker', 'paper_trading', bool),
+            'BROKER_HOST': ('broker', 'ib_host', str),
+            'BROKER_PORT': ('broker', 'ib_port', int),
+            'BROKER_CLIENT_ID': ('broker', 'client_id', int),
+            'BROKER_MAX_ORDER_SIZE': ('broker', 'max_order_size_usd', float),
+            'BROKER_MIN_ORDER_SIZE': ('broker', 'min_order_size_usd', float),
+            'BROKER_ORDER_TIMEOUT': ('broker', 'order_timeout_seconds', int),
+            'BROKER_MAX_RETRIES': ('broker', 'max_retries', int),
+            'BROKER_RETRY_DELAY': ('broker', 'retry_delay_seconds', int),
         }
         
         for env_var, (section, attr, converter) in env_mappings.items():
@@ -198,6 +225,7 @@ class Settings:
             'api': self.api.__dict__,
             'database': self.database.__dict__,
             'logging': self.logging.__dict__,
+            'broker': self.broker.__dict__,
             'web': self.web.__dict__,
         }
 
